@@ -22,6 +22,26 @@ num does not have any leading zeros except for the zero itself.
  * @param {number} k
  * @return {string}
  */
-var removeKdigits = function(num, k) {
-    
-};
+// A Monotonically Increasing Stack is a stack where elements are placed in increasing order from the bottom to the top
+var removeKdigits = function (num, k) {
+    // compare first and last if last while inserting if stack last > c pop else append
+    let stack = [];
+    for (let i = 0; i < num.length; i++) {
+        let c = parseInt(num.charAt(i))
+        while (k > 0 && stack.length && stack[stack.length - 1] > c) {
+            k--;
+            stack.pop();
+        }
+        stack.push(c);
+    }
+    while (k > 0) {
+        stack.pop();
+        k--;
+    }
+    let nonZeroIndex = 0;
+    while (nonZeroIndex < stack.length && stack[nonZeroIndex] === 0) {
+        nonZeroIndex++;
+    }
+    const result = stack.slice(nonZeroIndex).join("");
+    return result.length === 0 ? "0" : result;
+}
