@@ -31,22 +31,19 @@ Thus, the result should be [1,0].
 /*
 Iterate from last - mod/10 if 0 add 1 to previous again mod same till all elements changed
 */
-var plusOne = function(digits) {
-    let n = digits.length - 1
-    let prevMod;
-    while(prevMod !== -1 && n>=0){
+var plusOne = function (digits) {
+    let n = digits.length - 1;
+    let mod = -1;
+    while (n >= 0) {
         let sum = digits[n] + 1
-        if(sum % 10 === 0){
-            prevMod = sum % 10
-            digits[n] = prevMod
-        } else {
-            digits[n] = sum
-            prevMod = -1
+        mod = sum % 10;
+        if (mod === 0) digits[n] = mod;
+        else {
+            digits[n] = sum;
+            break
         }
         n--;
     }
-    if(prevMod === 0){
-        digits.unshift(1)
-    }
-    return digits
+    if (mod === 0) digits.unshift(1)
+    return digits;
 };
