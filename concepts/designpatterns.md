@@ -29,3 +29,7 @@ AppState{
 - Structural
 -- Adapter
 -- Facade - Example HTTP Clients - Dynamic Arrays(Vector)
+
+- Concurrency Pattern
+-- Poison Pill
+The Poison Pill design pattern is used to gracefully shut down a service or a producer-consumer system by sending a special message (the "poison pill") to message queue which indicates that no more messages will be sent, allowing the consumers to terminate
