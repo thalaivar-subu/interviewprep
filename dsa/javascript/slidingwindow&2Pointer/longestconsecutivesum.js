@@ -8,6 +8,7 @@ Explanation: The longest consecutive elements sequence is [1, 2, 3, 4]. Therefor
 Example 2:
 Input: nums = [0,3,7,2,5,8,4,6,0,1]
 Output: 9
+O(N + M)
  */
 var longestConsecutive = function (nums) {
     let set = new Set(nums);
