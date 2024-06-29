@@ -15,38 +15,53 @@ Input: coins = [1], amount = 0
 Output: 0
 https://leetcode.com/problems/coin-change/description/
 */
-// DP Solution
-var coinChange = function(coins, amount) {
-    let dp = Array(amount + 1).fill(Infinity);
-    dp[0] = 0; // 0 coins required for 0
-    for(let amt = 1; amt<=amount; amt++){
-        // for each amt we are getting minimum value so 1 more loop
-        for(let coin of coins){
-            if(amt - coin >= 0){
-                // valid case
-                dp[amt] = Math.min(dp[amt], 1 + dp[amt-coin]);
+// Top Down Approach
+var coinChange = function (coins, amount) {
+    const backTrack = (remaining) => {
+        if (remaining === 0) return 0;
+        if (remaining < 0) return -1;
+        let minCoins = amount + 1;
+        for (let coin of coins) {
+            const coinsNeeded = backTrack(remaining - coin);
+            if (coinsNeeded !== -1) minCoins = Math.min(minCoins, coinsNeeded + 1)
+        }
+        return minCoins;
+    }
+    let result = backTrack(amount);
+    return result < amount + 1 ? result : -1;
+};
+
+// Top Down Approach With Memoization
+var coinChange = function (coins, amount) {
+    // Top Down Approach
+    let map = new Map();
+    const backTrack = (remaining) => {
+        if (remaining === 0) return 0;
+        if (remaining < 0) return -1;
+        if(map.has(remaining)) return map.get(remaining);
+        let minCoins = amount + 1;
+        for (let coin of coins) {
+            const coinsNeeded = backTrack(remaining - coin);
+            if (coinsNeeded !== -1) minCoins = Math.min(minCoins, coinsNeeded + 1)
+        }
+        map.set(remaining, minCoins);
+        return minCoins;
+    }
+    let result = backTrack(amount);
+    return result < amount + 1 ? result : -1;
+};
+
+// Bottom Up Approach
+var coinChange = function (coins, amount) {
+    let dp = Array(amount + 1).fill(amount + 1);
+    dp[0] = 0;
+    for (let eachAmount = 1; eachAmount <= amount; eachAmount++) {
+        for (let coin of coins) {
+            if (eachAmount - coin >= 0) {
+                let possibleSolution = 1 + dp[eachAmount - coin];
+                dp[eachAmount] = Math.min(dp[eachAmount], possibleSolution);
             }
         }
     }
     return dp[amount] < amount + 1 ? dp[amount] : -1;
-};
-
-// DFS Solution With Memoization
-var coinChange = function(coins, amount) {
-    const map = new Map();
-    coins.sort((a,b) => b - a)
-    const dfs = (remaining) => {
-        if(remaining === 0) return 0; // no amt left
-        if(remaining <0) return -1; // can't achieve amt
-        if(map.has(remaining)) return map.get(remaining) // from cache
-        let minCoins = amount + 1;
-        for(let coin of coins){
-            const coinsNeeded = dfs(remaining - coin);
-            if(coinsNeeded !== -1) minCoins = Math.min(minCoins, coinsNeeded + 1);
-        }
-        map.set(remaining, minCoins); // store even if minCoins is amount + 1
-        return minCoins;
-    }
-    let result = dfs(amount)
-    return result < amount + 1 ? result : -1;
 };

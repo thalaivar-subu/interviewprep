@@ -23,3 +23,6 @@ var mergeTwoLists = function(l1, l2) {
         }
     }
 };
+
+// 1 -> 2 -> 3 -> null
+// 2 -> 4 -> null
