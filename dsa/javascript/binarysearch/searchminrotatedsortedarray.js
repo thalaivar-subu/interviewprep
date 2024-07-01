@@ -25,7 +25,7 @@ var search = function(nums, target) {
     else return binarySearch(nums, pivot+1, nums.length -1, target);
 };
 
-const findPivotIndex = (nums, target) =>{
+const findPivotIndex = (nums) =>{
     let start = 0;
     let end = nums.length - 1;
     while(start<=end){

@@ -30,12 +30,15 @@ const findPivotIndex = (nums, target) =>{
         let mid = Math.floor(start + (end-start)/2);
         if(mid < end && nums[mid] > nums[mid+1]) return mid;
         else if(start < mid && nums[mid-1] > nums[mid]) return mid - 1;
-        //have duplicates so
+        //have duplicates so skipping them
         else if(nums[start] === nums[mid] && nums[mid] === nums[end]){
+            // check if start is pivot
             if(start < end && nums[start] > nums[start+1]) return start;
             start++;
+            // check if end is pivot
             if(end > start && nums[end-1] > nums[end]) return end - 1;
             end--;
+            // if left side is sorted, pivot should be in right
         } else if(nums[start] < nums[mid]  ||(nums[start] === nums[mid] && nums[mid] > nums[end])){
             start = mid + 1;
         } else end = mid - 1;
