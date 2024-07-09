@@ -1,0 +1,95 @@
+Builder Pattern
+User Entity  - [Guest User, Registered User, Admin User]
+primaryKey Id
+name, emailid, phone number
+timeStamps - createdAt & updatedAt
+2 Approach - Same table isAdmin, New Table
+
+user Table
+primaryKey Id
+name, emailid, phone number, dob, etc
+username, password (hashed)
+timeStamps - createdAt & updatedAt
+
+user_admin Table
+primaryKey Id
+name, emailid, phone number
+username, password (hashed)
+role_id
+timeStamps - createdAt & updatedAt
+
+Roles
+>> timestamps, primaryKey
+name - hotel admin
+
+
+Role Provision Mapping
+>> timestamps, primaryKey
+role_id, provision_id
+
+
+Provision
+>> timestamps, primaryKey
+name - Edit Hotel
+
+
+Session Management - Singleton Pattern
+Redis -> Authorization, Authentication - {userid1: [token1, token2]}
+Token for either a guest or user -> [token, {loggedIn, locale}]
+
+Hotels/Rooms
+
+Hotel
+>> timeStamps - createdAt & updatedAt, primaryKey
+name, location, owner, etc
+
+Rooms
+>> timeStamps - createdAt & updatedAt, primaryKey
+room number
+room info details
+room type
+amenities
+foreignKey - hotel_id
+
+Rooms_availability
+>> timeStamps - createdAt & updatedAt, primaryKey
+isAvailable, date, discount
+foreignKey - room_id
+
+Booking/Reservations
+>> timeStamps - createdAt & updatedAt, primaryKey
+user_id
+room_id
+status [Booked, Cancelled, Waiting]
+booking_charge
+total_amount
+cancelled_time
+tax
+
+Refund_conditions
+>> timeStamps - createdAt & updatedAt, primaryKey
+room_id, refund_diff_time(seconds), reduction_percentage
+1, 100, 80%
+1, 500, 50%
+1, 1000, 30%
+
+Bookings which got Cancelled upto 3 days before - Refund
+
+Reviews/Ratings = room_type, hotel_type avg(ratings)
+>> timeStamps - createdAt & updatedAt, primaryKey
+room_id, hotel_id, rating(number), comments, user_id
+
+
+Payments
+>> timeStamps - createdAt & updatedAt, primaryKey
+user_id, booking_id, payment_gateway_ref_no, status
+
+Wrapping - Facade
+
+Strategy Manager Class - [hotelSearch, amenitiesSearch]
+
+Observer Pattern - Pub/Sub
+
+Dynamically Change - Common Interface
+
+Factory - User Creation - Admin, User

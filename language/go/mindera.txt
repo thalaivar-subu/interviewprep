@@ -1,0 +1,18 @@
+What is the difference between Goroutines and Threads?
+What is the difference between slices and arrays?
+Gabriel Medina
+5:14 PM
+https://go.dev/play/p/URODK02Moji
+
+package main
+
+import "fmt"
+
+type Divisor interface {
+	Divide(...int) (int, error)
+}
+
+func main() {
+	// result, err = divisor.Divide(10, 5) // result = 2 ; err = <nil>
+	// result, err = divisor.Divide(100, 2, 0, 5) // result = 0 ; err = integer divide by zero
+}

@@ -21,7 +21,7 @@ Example 3:
 Input: n = 30, k = 30, target = 500
 Output: 222616187
 Explanation: The answer must be returned modulo 109 + 7.
-O(N∗K)
+* O(2 pow N)
  */
 var numRollsToTarget = function (n, k, target) {
     const MOD = Math.pow(10, 9) + 7;

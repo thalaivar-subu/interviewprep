@@ -2,7 +2,7 @@
  * @param {number[]} candidates
  * @param {number} target
  * @return {number[][]}
- * O(N*M)
+ * O(2 pow N)
  */
 var combinationSum = function (candidates, target) {
     let result = [];
