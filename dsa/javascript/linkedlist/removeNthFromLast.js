@@ -20,17 +20,21 @@ Output: [1]
  * @return {ListNode}
  */
 var removeNthFromEnd = function(head, n) {
-    let slow = head;
-    let fast = head;
-    while(n--) fast = fast.next;
-    let prev = null
-    while(fast){
-        prev = slow;
-        slow = slow.next;
-        fast = fast.next;
-    }
-    if(prev == null) return head.next;
-    prev.next = slow.next;
-    slow.next = null;
-    return head;
+  let slow = head;
+  let fast = head;
+  // move fast pointer n nodes ahead
+  while(n--) fast = fast.next;
+  // create a prev pointer so we can track node before deletion node
+  let prev = null;
+  // since fast reaches null first, loop fast. slow is the node to delete
+  while(fast){
+    prev = slow;
+    slow = slow.next;
+    fast = fast.next;
+  }
+  if(prev == null) return head.next;
+  prev.next = slow.next;
+  slow.next = null;
+  return head;
+
 };
