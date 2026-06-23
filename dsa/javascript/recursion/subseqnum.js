@@ -17,3 +17,5 @@ var subsets = function(nums) {
     generateSubsets([], 0);
     return result;
 };
+
+// Every step 2 decisions - so 2 power N

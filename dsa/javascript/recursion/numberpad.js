@@ -1,6 +1,7 @@
 /**
  * @param {string} digits
  * @return {string[]}
+ * https://leetcode.com/problems/letter-combinations-of-a-phone-number/description/
  */
 var letterCombinations = function (digits) {
     if (digits.length === 0) {

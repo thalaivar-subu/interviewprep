@@ -57,7 +57,10 @@ var removeNodes = function(head) {
     return prev;
    }
    head = reverse(head);
-   
+   /*
+   Input: head = [5,2,13,3,8]
+   Output: [13,8]
+   */
    let max = head.val;
    let current = head;
    while(current && current.next) {

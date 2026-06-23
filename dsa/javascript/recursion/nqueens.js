@@ -17,15 +17,13 @@ var solveNQueens = function (n) {
             result.push(board.map(x => x.map(y => y ? "Q" : ".").join("")))
             return;
         }
-        let count = 0;
         for (let col = 0; col < board.length; col++) {
             if (isSafe(board, row, col)) {
                 board[row][col] = true;
-                count += backtrack(board, row + 1);
+                backtrack(board, row + 1);
                 board[row][col] = false;
             }
         }
-        return count;
     }
     backtrack(board, 0);
     return result;

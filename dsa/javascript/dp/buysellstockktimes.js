@@ -12,6 +12,37 @@ Explanation: Buy on day 2 (price = 2) and sell on day 3 (price = 6), profit = 6-
  * @param {number[]} prices
  * @return {number}
  */
+
+/**
+ * @param {number} k
+ * @param {number[]} prices
+ * @return {number}
+ */
+var maxProfit = function (k, prices) {
+    let cache = {};
+    const helper = (i, transactions, flag) => {
+        if (transactions === 0 || i === prices.length) return 0;
+
+        // if(cache[`${i}-${transactions}-${flag}`] !== undefined) return cache[`${i}-${transactions}-${flag}`];
+
+        // skip current day
+        let result = helper(i + 1, transactions, flag);
+
+        // buy
+        if (flag) {
+            let profit = -prices[i];
+            result = Math.max(result, profit + helper(i + 1, transactions, false))
+        } else {
+            let profit = prices[i];
+            result = Math.max(result, profit + helper(i + 1, transactions - 1, true))
+        }
+        // cache[`${i}-${transactions}-${flag}`] = result;
+        return result;
+    }
+    return helper(0, k, true)
+};
+
+
 var maxProfit = function (k, prices) {
     const n = prices.length;
     // 3d array - day times, k times, sell,buy

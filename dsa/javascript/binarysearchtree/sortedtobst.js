@@ -18,14 +18,14 @@ Explanation: [1,null,3] and [3,1] are both height-balanced BSTs.
  * @param {number[]} nums
  * @return {TreeNode}
  */
-var sortedArrayToBST = function(nums) {
-    const helper = (nums, start, end) => {
-        if(start>end) return null;
-        let mid = Math.floor(start + (end-start)/2);
+var sortedArrayToBST = function (nums) {
+    const helper = (start, end) => {
+        if (start > end) return null;
+        let mid = Math.floor(start + (end - start) / 2);
         let node = new TreeNode(nums[mid]);
-        node.left = helper(nums, start, mid - 1);
-        node.right = helper(nums, mid+1, end);
+        node.left = helper(start, mid - 1);
+        node.right = helper(mid + 1, end);
         return node;
     }
-    return helper(nums, 0, nums.length -1 );
+    return helper(0, nums.length - 1)
 };

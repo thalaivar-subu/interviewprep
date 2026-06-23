@@ -16,3 +16,7 @@
 - Eventual Consistency
 - Duplicate Messages - Service Goes Down, And Comes Up, it may read old message Again - Overcome By UUID
 - More Complex - Harder To Debug
+
+## Push/ Pull Model
+- Pull model Polls every N time units
+- Push Model mostly EDA (Kafka epoll case remember - polling always happens even in push but only negligible polling happens coz all data in kafka, kafka just need to do epoll simple)

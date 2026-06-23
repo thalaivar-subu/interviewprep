@@ -19,13 +19,13 @@ Output: 3
 
 var kthSmallest = function(root, k) {
     let count = 0;
-    const helper = (root, k) => {
-        if(root == null) return null;
-        let leftNode = helper(root.left, k);
-        if(leftNode) return leftNode;
+    const helper = (root) => {
+        if(root == null) return;
+        const left = helper(root.left);
+        if(left) return left;
         count++;
-        if(k == count) return root;
-        return helper(root.right, k);
+        if(k === count) return root;
+        return helper(root.right);
     }
-    return helper(root, k).val;
+    return helper(root).val;
 };

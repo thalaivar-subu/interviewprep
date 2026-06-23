@@ -23,25 +23,34 @@ num does not have any leading zeros except for the zero itself.
  * @return {string}
  */
 // A Monotonically Increasing Stack is a stack where elements are placed in increasing order from the bottom to the top
-var removeKdigits = function (num, k) {
-    // compare first and last if last while inserting if stack last > c pop else append
-    let stack = [];
-    for (let i = 0; i < num.length; i++) {
-        let c = parseInt(num.charAt(i))
-        while (k > 0 && stack.length && stack[stack.length - 1] > c) {
-            k--;
+/**
+ * @param {string} num
+ * @param {number} k
+ * @return {string}
+ */
+var removeKdigits = function (s, k) {
+    // Increasing order Stack
+    const stack = [];
+    for (let i = 0; i < s.length; i++) {
+        let num = parseInt(s.charAt(i));
+        // Idea is to remove k times if decreasing order or something
+        while (k > 0 && stack.length > 0 && stack[stack.length - 1] > num) {
+            // Pop element and decrement k
             stack.pop();
+            k--;
         }
-        stack.push(c);
+        stack.push(num);
     }
+    // handle increasing order ? 12345
     while (k > 0) {
         stack.pop();
         k--;
     }
-    let nonZeroIndex = 0;
-    while (nonZeroIndex < stack.length && stack[nonZeroIndex] === 0) {
-        nonZeroIndex++;
-    }
-    const result = stack.slice(nonZeroIndex).join("");
-    return result.length === 0 ? "0" : result;
-}
+    // Number is to remove leading zero - butNumber has a range after that
+    // we get Infiinty - 1 test case fail :(
+    // return stack.length > 0 ? "" + Number(stack.join("")) : "0";
+    let leadingZeroCount = 0;
+    while(stack.length > 0 && stack[leadingZeroCount] === 0) leadingZeroCount++;
+    let result = stack.slice(leadingZeroCount).join("");
+    return result.length > 0 ? result : "0";
+};

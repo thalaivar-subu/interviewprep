@@ -11,13 +11,13 @@ console.log(subseq("", "abc"));
 
 const v = "abc"
 const result = [];
-const subseqIteration = (index, arr) => {
-    if (arr.length > 0) result.push([...arr]);
-    for (let i = index; i < v.length; i++) {
-        arr.push(v.charAt(i))
-        subseq(i + 1, arr)
-        arr.pop();
+const subseqIteration = (currentSubSeq, start) => {
+    if (currentSubSeq.length > 0) result.push([...currentSubSeq]);
+    for (let i = start; i < v.length; i++) {
+        currentSubSeq.push(v.charAt(i))
+        subseq(i + 1, currentSubSeq)
+        currentSubSeq.pop();
     }
 }
-subseqIteration(0, [])
+subseqIteration([], 0)
 console.log(result)

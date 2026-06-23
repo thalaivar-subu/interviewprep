@@ -24,16 +24,18 @@ var longestCommonPrefix = function (strs) {
 };
 
 // Sort and check first and last element
-var longestCommonPrefix = function (strs) {
-    let result = "";
+/*
+After sorting strings lexicographically, the longest common prefix of all strings is the same as the common prefix of the first and last strings.
+ */
+var longestCommonPrefix = function(strs) {
     strs.sort();
-    let n = strs.length - 1;
-    let f = strs[0]
-    let l = strs[n];
-    let i = 0;
-    while (i < f.length && i < l.length) {
-        if (f[i] === l[i]) {
-            result += f[i];
+    let first = strs[0];
+    let last = strs[strs.length - 1];
+    let result = "";
+    let i =0;
+    while(i<first.length && i<last.length){
+        if(first[i] === last[i]){
+            result+=first[i];
             i++;
         } else break;
     }

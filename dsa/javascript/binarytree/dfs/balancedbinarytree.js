@@ -14,6 +14,7 @@ var isBalanced = function (root) {
     if (!root) return true;
     const leftHeight = getHeight(root.left);
     const rightHeight = getHeight(root.right);
+    // |height(left subtree) - height(right subtree)| ≤ 1 for every node in the tree.
     if (Math.abs(leftHeight - rightHeight) > 1) return false;
     return isBalanced(root.left) && isBalanced(root.right);
 };

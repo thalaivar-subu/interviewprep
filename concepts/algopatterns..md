@@ -1,11 +1,12 @@
 # Patterns
 - Sliding Window
-- Top K Elements - Heap
-- Modified Binary Search
-- Subset
-- Depth First Search
-- Breadth First Search
-- Topological Sort
-- Two Pointers
-- Greedy
-- Monotonic Stack/Queue
+- Heap | Eg - Top K Elements 
+- Modified Binary Search | Eg - Rotated Array Search, Two Sum, Sqrt, etc
+- Subset | Eg - String Subsets
+- Depth First Search | Eg - Binary Tree Recursion
+- Breadth First Search | Eg - Binary Tree Level Order Traversals
+- Two Pointers | Eg - Reverse a Linked List, Merge Sorted Arrays, etc
+- Greedy | Eg - Greedy Florist, Merge Intervals, etc
+- Monotonic Stack | Eg - Valid Parenthesis, Remove K Digits 
+- Binary Operators | Eg - Single NUmber
+- Backtracking + Memoization | Eg - Combination Sum, Coins Change, Robber, etc 

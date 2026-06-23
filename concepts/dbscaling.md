@@ -32,3 +32,7 @@ Spliting rows of a table based on shard key and putting it in new servers
 ## Views Vs Materialized Views
  - Views - Dynamically combines results but doesn't store
  - Materialized View- Stores the Combination. Configurable based on our needs - Mysql No Support, PostgresqL spport
+
+ ## Consistent Hashing
+- Modulo-based sharding: When a new shard is added, almost all keys need to be remapped and migrated because hash(key) % N changes for nearly every key.
+- Consistent hashing: When a new shard is added, only about 1/(N+1) of the keys move to the new shard. Using virtual nodes (vnodes) further improves load balancing and ensures an even distribution of migrated data.

@@ -1,4 +1,5 @@
 /**
+ * https://leetcode.com/problems/climbing-stairs/description/
  * @param {number} n
  * @return {number}
  You are climbing a staircase. It takes n steps to reach the top.
@@ -23,4 +24,14 @@ var climbStairs = function (n) {
     if (map.has(n)) return map.get(n);
     else map.set(n, climbStairs(n - 1) + climbStairs(n - 2))
     return map.get(n);
+};
+
+
+/**
+ * @param {number} n
+ * @return {number}
+ */
+var climbStairs = function(n) {
+    if(n<=1) return 1;
+    return climbStairs(n-1) + climbStairs(n-2);
 };

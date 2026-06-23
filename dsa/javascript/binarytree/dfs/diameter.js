@@ -16,6 +16,7 @@ Input: root = [1,2]
 Output: 1
  * @param {TreeNode} root
  * @return {number}
+ * o(N) time complexity, DFS mostly o(N) coz we visit only once
  */
 var diameterOfBinaryTree = function(root) {
     // get left height, get right height. diameter = max(dia, dia=left + right + 1)

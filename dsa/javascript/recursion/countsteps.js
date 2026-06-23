@@ -23,6 +23,8 @@ Example 3:
 
 Input: num = 123
 Output: 12
+
+Time Complexity: O(logn) where n is the input number
  * @param {number} num
  * @return {number}
  */
