@@ -40,5 +40,6 @@ var numRollsToTarget = function (n, k, target) {
         map.set(cacheKey, count)
         return count;
     }
-    return helper(n, target, k);
+    return helper(n, target);
 };
+

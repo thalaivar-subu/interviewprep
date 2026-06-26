@@ -1,0 +1,60 @@
+APAC vs RBAC
+Policy Enforcement vs Policy Decisioning
+
+
+
+Hackerrank Questions
+========================================
+Efficient Cost
+
+Given an array of positive integers arr and an integer threshold, partition the array into one or more contiguous groups such that:
+
+Each group contains at most threshold elements.
+The cost of a group is the maximum element in that group.
+
+Return the minimum possible total cost obtained by partitioning the entire array.
+
+Efficient Cost
+
+Given an array of positive integers arr and an integer threshold, partition the array into one or more contiguous groups such that:
+
+Each group contains at most threshold elements.
+The cost of a group is the maximum element in that group.
+
+Return the minimum possible total cost obtained by partitioning the entire array.
+
+Example 1
+Input:
+arr = [1,3,4,5,2,6]
+threshold = 3
+| Partition                 | Cost             |
+| ------------------------- | ---------------- |
+| `[1] [3] [4] [5] [2] [6]` | 1+3+4+5+2+6 = 21 |
+| `[1,3] [4,5] [2,6]`       | 3+5+6 = 14       |
+| `[1,3,4] [5] [2,6]`       | 4+5+6 = 15       |
+| `[1,3] [4] [5,2,6]`       | 3+4+6 = 13       |
+| `[1] [3,4,5] [2,6]`       | 1+5+6 = 12       |
+| **`[1,3,4] [5,2,6]`**     | **4+6 = 10**     |
+
+Output:
+10
+
+Solution
+function efficientCost(arr, threshold) {
+    const n = arr.length;
+    const dp = Array(n + 1).fill(Infinity);
+    dp[0] = 0;
+
+    for (let i = 1; i <= n; i++) {
+        let mx = 0;
+
+        for (let len = 1; len <= threshold && i - len >= 0; len++) {
+            mx = Math.max(mx, arr[i - len]);
+            dp[i] = Math.min(dp[i], dp[i - len] + mx);
+        }
+    }
+
+    return dp[n];
+}
+
+https://www.hackerrank.com/challenges/closest-numbers/problem

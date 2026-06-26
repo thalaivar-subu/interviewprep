@@ -21,6 +21,7 @@ var permute = function (nums) {
     return permutations
 };
 
+
 console.log(permute(["a", "b", "c"]))
 
 const v = "abc"

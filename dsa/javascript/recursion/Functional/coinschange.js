@@ -14,13 +14,14 @@ Example 3:
 Input: coins = [1], amount = 0
 Output: 0
 https://leetcode.com/problems/coin-change/description/
+o(N^amount)
 */
 // Top Down Approach
 var coinChange = function (coins, amount) {
     const backTrack = (remaining) => {
         if (remaining === 0) return 0;
         if (remaining < 0) return -1;
-        let minCoins = amount + 1;
+        let minCoins = amount + 1; // Infinity - Max Value
         for (let coin of coins) {
             const coinsNeeded = backTrack(remaining - coin);
             if (coinsNeeded !== -1) minCoins = Math.min(minCoins, coinsNeeded + 1)
@@ -52,6 +53,8 @@ var coinChange = function (coins, amount) {
 };
 
 // Bottom Up Approach
+//Input: coins = [1,2,5], amount = 11
+
 var coinChange = function (coins, amount) {
     let dp = Array(amount + 1).fill(amount + 1);
     dp[0] = 0;
@@ -65,3 +68,6 @@ var coinChange = function (coins, amount) {
     }
     return dp[amount] < amount + 1 ? dp[amount] : -1;
 };
+//Index : 0 1 2 3 4 5 6 7 8 9 10 11
+
+//Value : 0 1 1 2 2 1 2 2 3 3 2 3

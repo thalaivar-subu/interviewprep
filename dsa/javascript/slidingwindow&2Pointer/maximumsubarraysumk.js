@@ -30,6 +30,7 @@ Constraints:
  */
 /**
  * https://leetcode.com/problems/subarray-sum-equals-k/
+ * kadane's Algorithm
  * @param {number[]} nums
  * @param {number} k
  * @return {number}
