@@ -38,23 +38,21 @@ Constraints:
  * @param {number[]} nums
  * @return {number}
  */
-var longestConsecutive = function(nums) {
-    let set = new Set(nums);
+var longestConsecutive = function (nums) {
+    // sort or add in set
+    let numSet = new Set(nums);
     let longest = 0;
-
-    for (let num of set) {
-        if (!set.has(num - 1)) {
+    for (let num of numSet) {
+        // count from begining of a sequence
+        if (!(numSet.has(num - 1))) {
+            let currentStreak = 1; // once loop enter itself streak starts
             let currentNum = num;
-            let currentStreak = 1;
-
-            while (set.has(currentNum + 1)) {
+            while (numSet.has(currentNum + 1)) {
                 currentNum++;
                 currentStreak++;
             }
-
             longest = Math.max(longest, currentStreak);
         }
     }
-
     return longest;
 };

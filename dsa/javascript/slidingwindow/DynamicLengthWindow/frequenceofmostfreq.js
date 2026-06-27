@@ -48,23 +48,19 @@ Constraints:
  */
 var maxFrequency = function (nums, k) {
     nums.sort((a, b) => a - b);
-
+    let r = 0;
     let l = 0;
+    let maximumPossibleFreq = -Infinity;
+
     let total = 0;
-    let result = 0;
-
-    for (let r = 0; r < nums.length; r++) {
-        total += nums[r];
-
-        // Increments needed to make all elements in [l..r]
-        // equal to nums[r]
+    while (r < nums.length) {
+        total += nums[r]
         while ((nums[r] * (r - l + 1)) - total > k) {
-            total -= nums[l];
+            total -= nums[l]
             l++;
         }
-
-        result = Math.max(result, r - l + 1);
+        maximumPossibleFreq = Math.max(maximumPossibleFreq, r - l + 1)
+        r++;
     }
-
-    return result;
+    return maximumPossibleFreq;
 };

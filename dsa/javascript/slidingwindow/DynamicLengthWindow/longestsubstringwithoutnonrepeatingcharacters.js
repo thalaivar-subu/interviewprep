@@ -34,16 +34,18 @@ Notice that the answer must be a substring, "pwke" is a subsequence and not a su
  */
 var lengthOfLongestSubstring = function (s) {
     let charSet = new Set();
-    let l = 0;
     let r = 0;
-    let result = 0;
+    let l = 0;
+
+    let max = 0;
+    // Move right pointer, when duplicate in right move left pointer and clear set
     while (r < s.length) {
-        while (charSet.has(s[r])) {
+        while (charSet.has(s.charAt(r))) {
             charSet.delete(s.charAt(l++));
         }
-        charSet.add(s[r]);
-        result = Math.max(result, charSet.size);
+        charSet.add(s.charAt(r));
+        max = Math.max(max, charSet.size)
         r++;
     }
-    return result;
+    return max;
 };

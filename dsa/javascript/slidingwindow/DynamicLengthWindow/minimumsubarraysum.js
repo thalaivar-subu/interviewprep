@@ -41,7 +41,7 @@ Follow up: If you have figured out the O(n) solution, try coding another solutio
  */
 var minSubArrayLen = function (target, nums) {
     let l = 0; r = 0;
-    let result = Infinity;
+    let result = Infinity; // Mandatory
     let total = 0;
     while (r < nums.length) {
         total += nums[r];

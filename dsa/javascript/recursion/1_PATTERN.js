@@ -31,3 +31,39 @@ backtrack(0, [], target)
 
     // if pass index - i>start && nums[i] === nums[i-1] continue;
     
+
+/* Decision Tree Backtracking Pattern */
+var rob = function (nums) {
+    const map = new Map();
+    const helper = (i) => {
+        if (i >= nums.length) return 0;
+        if (map.has(i)) return map.get(i)
+        const rob = nums[i] + helper(i + 2)
+        const skip = helper(i + 1)
+        const output = Math.max(rob, skip);
+        map.set(i, output)
+        return output;
+    }
+    return helper(0);
+};
+
+/* Reduced State Backtracking Pattern */
+var numRollsToTarget = function (n, k, target) {
+    const MOD = Math.pow(10, 9) + 7;
+    const map = new Map();
+    const helper = (n, target) => {
+        if (n <= 0) {
+            if (target === 0) return 1
+            else return 0;
+        }
+        // let cacheKey = `${n}-${target}`;
+        // if (map.has(cacheKey)) return map.get(cacheKey);
+        let count = 0;
+        for (let i = 1; i <= k; i++) {
+            count = (count + helper(n - 1, target - i)) % MOD;
+        }
+        // map.set(cacheKey, count)
+        return count;
+    }
+    return helper(n, target);
+};
