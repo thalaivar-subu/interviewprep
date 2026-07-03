@@ -1,4 +1,6 @@
-/* https://yomguithereal.github.io/posts/lru-cache */
+/* https://yomguithereal.github.io/posts/lru-cache 
+https://leetcode.com/problems/lru-cache/
+*/
 class ListNode {
     constructor(key, val){
         this.key = key;

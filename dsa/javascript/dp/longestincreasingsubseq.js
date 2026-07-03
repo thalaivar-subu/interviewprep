@@ -32,31 +32,20 @@ var lengthOfLIS = function (nums) {
  * @param {number[]} nums
  * @return {number}
  */
-var lengthOfLIS = function (nums) {
-    if (!nums || !nums.length) return 0;
+var lengthOfLIS = function(nums) {
+    const n = nums.length;
+    const dp = new Array(n).fill(1);
 
-    let memo = Array(nums.length).fill(-1);
+    let ans = 1;
 
-    const dfs = (currentIndex) => {
-        if (memo[currentIndex] !== -1) return memo[currentIndex];
-
-        let maxLength = 1;
-
-        for (let i = 0; i < currentIndex; i++) {
-            if (nums[currentIndex] > nums[i]) {
-                maxLength = Math.max(maxLength, 1 + dfs(i));
+    for (let i = 1; i < n; i++) {
+        for (let j = 0; j < i; j++) {
+            if (nums[j] < nums[i]) {
+                dp[i] = Math.max(dp[i], dp[j] + 1);
             }
         }
-
-        memo[currentIndex] = maxLength;
-        return maxLength;
-    };
-
-    let maxLIS = 0;
-
-    for (let i = 0; i < nums.length; i++) {
-        maxLIS = Math.max(maxLIS, dfs(i));
+        ans = Math.max(ans, dp[i]);
     }
 
-    return maxLIS;
+    return ans;
 };

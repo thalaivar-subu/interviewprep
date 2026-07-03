@@ -7,6 +7,11 @@ backtrack = () => {
     // loop
     // Push into current subset
     // Recursion - i=0 or i=start, backtrack(i) 
+    
+    dfs() Every recursive call can choose every candidate.
+    i = 0 I can reuse the current element.
+    dfs(i+1) I cannot reuse this element.
+
     //  The list must not contain the same combination twice => i+1
     // if different sequence considered as different combination => i=0
     // Pop from current subset
