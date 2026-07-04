@@ -2,6 +2,7 @@
 /**
  * @param {character[][]} board
  * @return {boolean}
+ * O(1) time and O(1) space (board is fixed at 9x9)
  */
 var isValidSudoku = function (board) {
 

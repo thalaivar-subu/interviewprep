@@ -19,6 +19,7 @@ Explanation: There is no such common subsequence, so the result is 0.
  * @param {string} text1
  * @param {string} text2
  * @return {number}
+ * O(m*n) time, O(m*n) space
  */
 var longestCommonSubsequence = function (text1, text2) {
     // create dp table

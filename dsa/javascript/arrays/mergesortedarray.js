@@ -4,6 +4,7 @@
  * @param {number[]} nums2
  * @param {number} n
  * @return {void} Do not return anything, modify nums1 in-place instead.
+ * O(m+n) time, O(1) space
  */
 var merge = function(nums1, m, nums2, n) {
     let i = m - 1;

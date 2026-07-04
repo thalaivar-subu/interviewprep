@@ -19,6 +19,7 @@ Explanation: There are three ways to climb to the top.
 2. 1 step + 2 steps
 3. 2 steps + 1 step
  */
+// Memoized recursion: O(n) time, O(n) space
 let map = new Map([[0, 1], [1, 1]]);
 var climbStairs = function (n) {
     if (map.has(n)) return map.get(n);
@@ -30,6 +31,7 @@ var climbStairs = function (n) {
 /**
  * @param {number} n
  * @return {number}
+ * Naive recursion (no memo): O(2^n) time, O(n) recursion space
  */
 var climbStairs = function(n) {
     if(n<=1) return 1;

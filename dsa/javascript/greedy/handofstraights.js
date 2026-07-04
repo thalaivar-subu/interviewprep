@@ -22,6 +22,7 @@ Explanation: Each array should be divided in subarrays of size 3.
  * @param {number[]} hand
  * @param {number} groupSize
  * @return {boolean}
+ * O(n log n) time (sort + map ops), O(n) space
  */
 var isNStraightHand = function (hand, groupSize) {
     if (hand.length % groupSize !== 0) return false;
@@ -47,7 +48,7 @@ var isNStraightHand = function (hand, groupSize) {
     return true;
 };
 
-// iF NO duplicate
+// iF NO duplicate: O(n log n) time (sort), O(1) extra space
 function isNStraightHand(hand, groupSize) {
     if (hand.length % groupSize !== 0) return false;
 

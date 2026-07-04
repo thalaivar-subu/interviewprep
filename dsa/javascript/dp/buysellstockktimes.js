@@ -18,6 +18,7 @@ Explanation: Buy on day 2 (price = 2) and sell on day 3 (price = 6), profit = 6-
  * @param {number[]} prices
  * @return {number}
  */
+// Recursive brute force (memoization commented out): O(2^n) time, O(n) recursion space
 var maxProfit = function (k, prices) {
     let cache = {};
     const helper = (i, transactions, flag) => {
@@ -43,6 +44,7 @@ var maxProfit = function (k, prices) {
 };
 
 
+// Bottom-up tabulation: O(n*k) time, O(n*k) space
 var maxProfit = function (k, prices) {
     const n = prices.length;
     // 3d array - day times, k times, sell,buy

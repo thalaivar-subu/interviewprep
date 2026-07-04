@@ -14,8 +14,9 @@ Output: [0]
  */
 /*
 Two Pointer Approach
-i, j 
+i, j
 Move non zero to 1st and append zero in another loop
+O(n) time, O(1) space
 */
 var moveZeroes = function(nums) {
     let j =0;

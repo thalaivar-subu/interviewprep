@@ -30,6 +30,7 @@ Thus, the result should be [1,0].
 
 /*
 Iterate from last - mod/10 if 0 add 1 to previous again mod same till all elements changed
+O(n) time, O(1) extra space (ignoring the output array)
 */
 var plusOne = function (digits) {
     let n = digits.length - 1;

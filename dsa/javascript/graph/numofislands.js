@@ -28,6 +28,7 @@ grid[i][j] is '0' or '1'.
 
  * @param {character[][]} grid
  * @return {number}
+ * O(m*n) time, O(m*n) recursion space worst case (all-land grid)
  */
 var numIslands = function(grid) {
     let count = 0;

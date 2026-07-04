@@ -11,6 +11,7 @@ Example 2:
 Input: s = "cbbd"
 Output: 2
 Explanation: One possible longest palindromic subsequence is "bb".
+ * O(n^2) time, O(n^2) space
  */
 var longestPalindromeSubseq = function(s) {
     const n = s.length;

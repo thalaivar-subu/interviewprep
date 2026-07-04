@@ -9,6 +9,7 @@
  * @return {void} Do not return anything, modify nums in-place instead.
  */
 // Right Rotation
+// O(n) time, O(1) space
 var rotate = function (nums, k) {
     k = k % nums.length;
     reverse(nums, 0, nums.length - 1);

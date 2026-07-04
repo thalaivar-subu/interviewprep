@@ -19,6 +19,7 @@ Example 3:
 
 Input: s = "catsandog", wordDict = ["cats","dog","sand","and","cat"]
 Output: false
+ * O(n^2) time, O(n) space (memoized by suffix)
  */
 var wordBreak = function (s, wordDict) {
     let memo = {};

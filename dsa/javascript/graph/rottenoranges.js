@@ -43,6 +43,7 @@ grid[i][j] is 0, 1, or 2.
  * https://leetcode.com/problems/rotting-oranges/description/
  * @param {number[][]} grid
  * @return {number}
+ * O(m*n) time, O(m*n) space (queue)
  */
 var orangesRotting = function(grid) {
     const queue = [];

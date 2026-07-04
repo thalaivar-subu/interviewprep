@@ -42,6 +42,7 @@ All the integers in rating are unique.
 /**
  * @param {number[]} rating
  * @return {number}
+ * O(n^2) time, O(1) space
  */
 var numTeams = function (rating) {
     let numOfTeams = 0;

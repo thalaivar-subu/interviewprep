@@ -1,3 +1,4 @@
+// O(n^2) time, O(n) recursion space
 const selectionSort = (arr, r, c, max) => {
     if (r === 0) return; // Base case: if only one element is left, the array is sorted
 

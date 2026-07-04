@@ -2,6 +2,7 @@
  * @param {number[]} nums
  * @return {number}
  * https://leetcode.com/problems/remove-duplicates-from-sorted-array/description/
+ * O(n) time, O(1) space
  */
 var removeDuplicates = function (nums) {
     let result = 0;

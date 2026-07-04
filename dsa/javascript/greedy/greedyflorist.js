@@ -1,5 +1,6 @@
 // https://www.hackerrank.com/challenges/greedy-florist
 // Complete the getMinimumCost function below.
+// O(n log n) time (sort), O(1) extra space
 function getMinimumCost(k, c) {
     let minimumCost = 0;
     // We need to sort in descending order so maximum will be fetched first

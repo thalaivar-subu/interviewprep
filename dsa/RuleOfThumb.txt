@@ -1,0 +1,144 @@
+RULE OF THUMB — pick the pattern from the problem's shape
+(cross-reference: dsa/javascript/<folder>/PATTERN.md has the full template + complexity for each)
+
+QUICK DECISION ORDER (ask these in this order)
+1. Sorted input, or can I define a monotonic condition over a range?      -> Binary Search
+2. Contiguous subarray/substring, size grows or shrinks with a rule?      -> Sliding Window
+3. Need the next/previous greater or smaller element?                    -> Monotonic Stack
+4. Need the max/min inside EVERY sliding window as it moves?              -> Monotonic Deque
+5. Need O(1) "have I seen this / what's its count" lookups?               -> Hashing
+6. Subarray SUM queries (esp. with negatives, or "count subarrays")?      -> Prefix Sum
+7. List of [start, end] ranges?                                          -> Intervals
+8. Problem says "return ALL possible ..." (subsets/perms/combos)?         -> Recursion/Backtracking
+9. Brute-force recursion is exponential but distinct subproblems are few? -> DP
+10. Graph/tree — see the GRAPH & TREE section below.
+11. Set of strings + prefix queries (autocomplete, dictionary search)?     -> Trie
+12. Groups forming incrementally from edges ("same group as", "first edge that creates a cycle")? -> Union-Find
+13. None of the above, just scan/manipulate the array directly?          -> Arrays
+
+---
+
+ARRAYS
+  No specialized technique needed — direct scan or in-place write pointer.
+  cue: "modify in place", merge two arrays, simple index bookkeeping.
+
+TWO POINTERS
+  cue: sorted array + pair/triplet sums to target (converging ends),
+       or same-direction read/write pointers for in-place compaction.
+
+SLIDING WINDOW
+  cue: "longest/shortest substring/subarray satisfying X".
+  - fixed-length-window: window size k is given up front.
+  - dynamic-length-window: window grows on add, shrinks while invalid.
+  Positive numbers only, sum constraint -> plain sliding window works
+  (monotonic: adding only grows the sum, so shrink-while-too-big is safe).
+  Negative numbers allowed -> sliding window breaks (shrinking doesn't
+  monotonically decrease the sum) -> use Prefix Sum + HashMap instead.
+
+MONOTONIC STACK
+  cue: "next greater element", "daily temperatures", "remove k digits to
+  get the smallest number". Increasing stack -> next smaller element.
+  Decreasing stack -> next greater element.
+
+MONOTONIC DEQUE
+  cue: "sliding window maximum/minimum" specifically — a monotonic stack
+  can't evict elements that fall off the window's left edge, a deque can.
+
+BINARY SEARCH
+  cue: sorted array and need better than O(n); OR "find the smallest/
+  largest x such that condition(x) is true" (search on the answer, not
+  the array itself — e.g. sqrt(x), minimum days/capacity problems).
+
+PREFIX SUM
+  cue: "subarray sum equals/divisible by k", "count subarrays with sum X".
+  "The sum of any subarray = difference of two prefix sums." Pair with a
+  hashmap (prefixSum -> count or first index) whenever negatives are
+  allowed or you need O(n) instead of O(n^2) brute force.
+
+HASHING
+  cue: nested loop checking pairs, or repeated .includes()/.indexOf() in
+  a loop — almost always collapses to one pass with a Map/Set. Two Sum
+  (unsorted), Valid Anagram (frequency map).
+
+INTERVALS
+  cue: merge/insert intervals, minimum removals for non-overlapping.
+  Sort by start (merge/insert) or by end (greedy minimum-removal), then
+  one pass.
+
+GREEDY
+  cue: "minimum number of X to cover/achieve Y", or reduces to sort-by-
+  one-key then scan once. Hard part is proving the locally-best choice
+  is globally safe — once proven, code is short. (Greedy Florist, Merge
+  Intervals, Jump Game.)
+
+DP (dynamic programming)
+  cue: brute-force recursion re-solves the same state many times, but
+  the number of DISTINCT states is small (bounded by 1-2 changing
+  indices). "Count the ways", "min/max cost to reach", "can you
+  partition". Top-down = natural recursion + memo cache. Bottom-up =
+  fill a table from the base case up, no call stack.
+
+RECURSION / BACKTRACKING
+  cue: "return all possible combinations/permutations/subsets/
+  partitions". Shape: choose an option, recurse, un-choose (push/pop).
+  Watch for exponential blowup — add memoization if the same state
+  recurs (turns it into DP).
+
+TRIE (prefix tree)
+  cue: autocomplete/search-suggestions, spellcheck, word search over a
+  dictionary, longest common prefix across many words. O(word length)
+  per operation regardless of how many words are stored.
+
+UNION-FIND (disjoint set)
+  cue: "how many groups/provinces", "are these two in the same group",
+  "first edge that creates a cycle" as edges arrive one at a time. Path
+  compression + union by rank -> near-O(1) per operation.
+
+TOPOLOGICAL SORT
+  cue: "course prerequisites", "build order" — DEPENDENCY ordering on a
+  DIRECTED graph. Different from plain graph/ BFS: edges mean "must come
+  before", not "is connected to". Kahn's algorithm (BFS + in-degree).
+
+GRAPH (unweighted, undirected/grid)
+  cue: "number of islands", "rotting oranges", flood fill, connected
+  components where every edge counts as 1 step. Plain BFS/DFS already
+  gives the shortest path here — no weights involved.
+
+GRAPH SHORTEST PATH (weighted)
+  cue: edges have costs/weights, "minimum time/cost/effort to reach".
+  Plain BFS breaks once edges aren't uniform -> Dijkstra (priority
+  queue, always expand the cheapest-known unvisited node next).
+
+BINARY TREE
+  Not sorted — split on what's being asked:
+  - bfs/: answer is per LEVEL (right side view, zigzag, level averages).
+  - dfs/: answer is about a PATH or SUBTREE property (depth, balance,
+    LCA, invert, same-tree).
+
+BINARY SEARCH TREE
+  cue: exploit the BST invariant (left < node < right) same as binary
+  search on an array. In-order traversal of a BST visits nodes in
+  SORTED order — the trick behind kth-smallest and BST validation.
+
+HEAP
+  cue: repeatedly need the current min/max out of a CHANGING collection
+  — kth largest, top-k frequent, merge k sorted lists, running median.
+  O(log n) insert/extract vs O(n) for a sorted array.
+
+LINKED LIST
+  cue: fast/slow pointers for cycle detection & finding the middle;
+  reverse-in-place with a 3-pointer walk (prev/current/next); a dummy
+  head node avoids special-casing "the head itself changes".
+
+SORT
+  Implementing a sort algorithm from scratch (interview asks to
+  implement/explain trade-offs) rather than just calling .sort().
+
+MATH / BINARY (bit manipulation)
+  cue: "without using +", counting set bits, prime sieve, base
+  conversion (int <-> Roman numeral). Usually O(1) or O(n log log n)
+  (sieve), independent of a specialized data structure.
+
+MATRIX
+  cue: "rotate the image in place", validate a fixed-size grid.
+  Transpose + reverse rows/columns is the go-to in-place rotation trick.

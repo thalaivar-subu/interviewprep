@@ -1,3 +1,4 @@
+// insert/extractMin: O(log n) time each, O(n) space overall
 function MinHeap() {
     let heap = [];
     function getParentIndex(i) {

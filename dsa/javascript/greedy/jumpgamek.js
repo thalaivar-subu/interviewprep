@@ -35,6 +35,7 @@ It's guaranteed that you can reach nums[n - 1].
  * https://leetcode.com/problems/jump-game-ii/
  * @param {number[]} nums
  * @return {number}
+ * O(n) time, O(1) space
  */
 var jump = function (nums) {
     let l = 0;

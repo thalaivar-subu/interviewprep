@@ -1,6 +1,7 @@
 /**
  * @param {string} s
  * @return {number}
+ * O(n) time, O(1) space
  */
 var romanToInt = function(s) {
     let result = 0;

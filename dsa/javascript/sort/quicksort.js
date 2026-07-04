@@ -1,6 +1,7 @@
 /**
  * @param {number[]} nums
  * @return {number[]}
+ * O(n log n) time average, O(n^2) worst case, O(log n) recursion space average
  */
 var sortArray = function (nums) {
     quickSort(nums, 0, nums.length - 1)

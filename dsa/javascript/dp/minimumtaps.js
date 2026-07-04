@@ -17,6 +17,7 @@ Example 2:
 Input: n = 3, ranges = [0,0,0,0]
 Output: -1
 Explanation: Even if you activate all the four taps you cannot water the whole garden.
+ * O(n^2) time worst case, O(n) space
  */
 var minTaps = function(n, ranges) {
     let dp = Array(n+1).fill(Infinity)

@@ -15,7 +15,7 @@ Input: coins = [1], amount = 0
 Output: 0
 https://leetcode.com/problems/coin-change/description/
 */
-// Top Down Approach
+// Top Down Approach: O(coins^amount) time (exponential, no memo), O(amount) recursion space
 var coinChange = function (coins, amount) {
     const backTrack = (remaining) => {
         if (remaining === 0) return 0;
@@ -31,7 +31,7 @@ var coinChange = function (coins, amount) {
     return result < amount + 1 ? result : -1;
 };
 
-// Top Down Approach With Memoization
+// Top Down Approach With Memoization: O(amount * coins.length) time, O(amount) space
 var coinChange = function (coins, amount) {
     // Top Down Approach
     let map = new Map();
@@ -51,7 +51,7 @@ var coinChange = function (coins, amount) {
     return result < amount + 1 ? result : -1;
 };
 
-// Bottom Up Approach
+// Bottom Up Approach: O(amount * coins.length) time, O(amount) space
 var coinChange = function (coins, amount) {
     let dp = Array(amount + 1).fill(amount + 1);
     dp[0] = 0;

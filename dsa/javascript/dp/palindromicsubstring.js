@@ -10,7 +10,7 @@ Input: s = "aaa"
 Output: 6
 Explanation: Six palindromic strings: "a", "a", "a", "aa", "aa", "aaa".
  */
-// Center Expansion
+// Center Expansion: O(n^2) time, O(1) space
 var countSubstrings = function (s) {
     let count = 0;
     const isPalindrome = (left, right) => {
@@ -26,7 +26,7 @@ var countSubstrings = function (s) {
     return count;
 };
 
-// DP Solution
+// DP Solution: O(n^2) time, O(n^2) space
 var countSubstrings = function(s) {
     const n = s.length;
     let count = 0;

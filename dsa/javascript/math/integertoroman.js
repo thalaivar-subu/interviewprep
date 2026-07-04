@@ -27,6 +27,7 @@ Explanation:
 /**
  * @param {number} num
  * @return {string}
+ * O(1) time (fixed 13-entry symbol map), O(1) space
  */
 var intToRoman = function(num) {
     const map = {
