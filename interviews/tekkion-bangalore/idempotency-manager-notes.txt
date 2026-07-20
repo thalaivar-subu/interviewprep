@@ -1,0 +1,146 @@
+Idempotent Request Deduplication Manager
+========================================
+
+Layout (2 files per language, 2 approaches each):
+
+java/
+  IdempotencyManagerFuture.java       - CompletableFuture-based (non-blocking caller)
+  IdempotencyManagerTraditional.java  - synchronized + wait()/notifyAll(), plain HashMap + mutex,
+                                         raw Thread, java.util.Timer (no java.util.concurrent
+                                         futures/latches/executors for coordination at all)
+  Run:  javac IdempotencyManagerFuture.java && java IdempotencyManagerFuture
+        javac IdempotencyManagerTraditional.java && java IdempotencyManagerTraditional
+
+go/future/main.go
+  Channel-based "future": close(entry.done) is Go's broadcast-once primitive, standing in for
+  CompletableFuture.complete(). Atomic claim = mutex-guarded map (sync.Mutex + a plain map).
+  Run:  go run ./go/future
+
+go/traditional/main.go
+  sync.Mutex + sync.Cond - Go's direct equivalent of Java's synchronized/wait/notifyAll monitor
+  idiom. Same atomic-claim pattern, different coordination primitive.
+  Run:  go run ./go/traditional
+
+nodejs/idempotency-promise.js
+  Promise-based ("deferred" pattern: a Promise whose resolve/reject are captured and called later
+  from inside the processor's completion handler). Every coalescing caller awaits the SAME
+  Promise object.
+  Run:  node idempotency-promise.js
+
+nodejs/idempotency-callback.js
+  "Traditional" pre-Promise Node style: plain error-first callbacks, an array of pending waiter
+  callbacks per key, all invoked directly when processing settles. No Promises/async-await at all.
+  Run:  node idempotency-callback.js
+
+Each file is fully self-contained: manager class/struct + its own error type(s) + an embedded
+demo/main that exercises: 1000 (or 1000-equivalent) concurrent/interleaved identical requests
+coalescing onto ONE execution, a conflicting-payload rejection, a memoized post-completion hit,
+and a job that outlives a (deliberately shortened, for the demo) TTL to prove already-attached
+waiters are unaffected by eviction.
+
+Core design (same shape in every file)
+---------------------------------------
+cache: key -> entry { key, payload, status(IN_PROGRESS/COMPLETED/FAILED), result, error,
+                       + one coordination primitive: future / done-channel / mutex+cond / promise
+                       / waiters-callback-array }
+
+submit(key, payload, processor):
+  1. ATOMIC CLAIM on the map (see per-language notes below) - exactly one caller ever creates
+     and installs a fresh entry for a brand-new key.
+  2. Claim won -> kick off processor asynchronously, return this caller's own wait-path on the
+     entry.
+  3. Claim lost (entry already existed) -> attach():
+       - COMPLETED -> return cached result immediately (memoized, processor NOT re-invoked)
+       - FAILED    -> return cached error immediately
+       - IN_PROGRESS + payload differs -> reject immediately (conflict), never wait
+       - IN_PROGRESS + payload matches -> wait on the SAME coordination primitive the winner holds
+
+On completion: set result/status, then signal (future.complete / close(channel) / cond.Broadcast
+/ promise.resolve / invoke every queued callback) - this is the ONE moment every waiter is woken,
+and it happens exactly once per key. Then schedule eviction on a mechanism separate from
+processing (ScheduledExecutorService / time.AfterFunc / java.util.Timer / setTimeout), timed from
+completion, not from submission.
+
+Eviction is always a CONDITIONAL delete (remove-if-still-mapped-to-this-exact-entry), so it can
+never delete a newer entry that reused the key after this one was already evicted.
+
+Per-language atomic-claim mechanism
+-------------------------------------
+Java (Future)        - ConcurrentHashMap.putIfAbsent
+Java (Traditional)   - plain HashMap + `synchronized (lock) { get-then-put }`
+Go (future)          - sync.Mutex-guarded plain map (Go's map type is never safe for concurrent
+                        use on its own - this is not optional, unlike Java where ConcurrentHashMap
+                        already bakes it in)
+Go (traditional)     - same sync.Mutex-guarded map pattern (the difference vs. go/future is only
+                        in how WAITERS coordinate, not in how the claim is made)
+Node (both files)    - no lock at all: JS is single-threaded and the check-then-insert is
+                        synchronous (no `await`/callback yield in between), so it's already
+                        atomic by construction. This is the one place Node's story genuinely
+                        differs from Java/Go, and worth calling out explicitly if asked.
+
+Per-language "how do waiters get woken, with no polling" mechanism
+----------------------------------------------------------------------
+Java (Future)        - CompletableFuture.complete()/completeExceptionally() -> resolves every
+                        attached future via the internal completion callback chain
+Java (Traditional)   - synchronized(entry) { while (IN_PROGRESS) entry.wait(); } / notifyAll()
+                        - the `while` guards spurious wakeups only, it does not re-poll a timer
+Go (future)          - close(entry.done) - closing a channel is a broadcast-once wakeup; every
+                        goroutine parked on `<-entry.done`, and every later receive, unblocks
+                        immediately (Go memory model: close happens-before a receive that returns
+                        because the channel is closed - this is also what makes it safe to read
+                        entry.status/result/err AFTER the receive without any extra lock)
+Go (traditional)     - cond.Wait() / cond.Broadcast() under entry.mu - direct analogue of Java's
+                        wait/notifyAll, just spelled sync.Cond instead of an intrinsic monitor
+Node (promise)       - the deferred Promise's resolve()/reject() -> every `await`er (or .then())
+                        is scheduled on the microtask queue
+Node (callback)      - every callback queued in entry.waiters is invoked directly, once, when
+                        processing settles
+
+Why eviction can never cause a duplicate execution for an already-attached waiter (all 6 files)
+---------------------------------------------------------------------------------------------------
+Once a caller has looked the entry up ONE time (via the atomic claim / attach step), it holds a
+direct reference to that entry's coordination primitive (future / channel / cond / promise /
+waiters array) and never touches the cache map again. The map is only used for *discovery* of an
+in-flight or completed entry; the coordination primitive is what actually delivers the result, and
+it is completely independent of whether the map still points at that entry. So even if eviction
+fires moments after completion (a long job finishing just after a short TTL elapsed), every caller
+that already attached still gets the correct result. Only a request that performs its FIRST lookup
+after eviction is a genuine cache miss, and correctly reprocesses.
+
+Future/promise vs blocking (traditional) tradeoff
+----------------------------------------------------
+Future/Promise-based: a waiting caller costs ~0 threads (Java/Go) or is simply "not blocking
+anything" (Node, since Node has no threads to block) while pending - just a registered callback.
+Best under very high fan-in or on async/reactive stacks.
+Traditional/blocking (Java wait/notify, Go cond, Node callback-array): simple to call from
+synchronous code, but in Java/Go every waiting caller occupies a full OS thread + stack for the
+entire in-flight duration - risk of thread-pool exhaustion under heavy coalescing. (This tradeoff
+doesn't really apply to Node's two files the same way, since neither ever blocks a thread - Node
+only has one - but the callback-array file is still "traditional" in flavor: no Promises/async at
+all, just raw callback plumbing, the pre-2015 Node idiom.)
+
+Verification status
+--------------------
+Java: JDK 21 installed, both files compiled and run standalone. All 4 scenarios pass in each:
+  - processor executions = 1 across 1000 concurrent callers, 1 distinct result
+  - conflicting payload rejected
+  - memoized call returns in low microseconds, executions still 1
+  - long job (1000ms) outliving a short TTL (200ms): still 1 execution across 300+ waiters;
+    post-eviction resubmit correctly re-executes (executions -> 2)
+
+Node.js: Node 24 LTS installed, both files executed - all 4 scenarios pass in each:
+  - 1000 interleaved callers -> 1 execution, 1 distinct result
+  - conflict rejected; memoized hit in ~25-50us; long-job/TTL edge case correct (1 -> 2 executions)
+
+Go: Go 1.26 installed. Both files compile clean and pass `go vet`, but the demos could NOT be
+EXECUTED on this machine: Windows Smart App Control blocks locally built unsigned executables
+("An Application Control policy has blocked this file"), and any `go run`/`go build` output is
+exactly that. The code was hand-reviewed carefully (including one real data race caught and fixed
+in go/future/main.go - an early draft read entry.status before receiving on the channel, a genuine
+race per the Go memory model; fixed by only reading status/result/err AFTER the channel receive).
+To actually execute (on this machine you'd have to turn off Smart App Control - note that once
+turned off it cannot be re-enabled without reinstalling Windows - or just use any other machine /
+WSL / an online Go playground):
+  go run ./go/future/main.go
+  go run ./go/traditional/main.go
+Ideally also run with the race detector where available: go run -race ...
