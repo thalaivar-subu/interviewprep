@@ -16,9 +16,9 @@ Explanation: You will always arrive at index 3 no matter what. Its maximum jump 
  */
 var canJump = function(nums) {
     let reachable = 0;
-    for (let i = 0; i < stops.length; i++) {
+    for (let i = 0; i < nums.length; i++) {
         if (i > reachable) return false;
-        reachable = Math.max(reachable, i + stops[i]);
+        reachable = Math.max(reachable, i + nums[i]);
     }
     return true;
 }

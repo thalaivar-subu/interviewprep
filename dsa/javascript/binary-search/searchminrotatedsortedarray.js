@@ -33,8 +33,8 @@ const findPivotIndex = (nums) =>{
         let mid = Math.floor(start + (end-start)/2);
         if(mid<end && nums[mid] > nums[mid+1]) return mid;
         else if(mid>start && nums[mid]<nums[mid -1]) return mid-1;
-        else if(nums[mid] <= nums[start]) end = mid - 1;
-        else start = mid + 1;
+        else if(nums[mid] >= nums[start]) start = mid + 1;
+        else end = mid - 1;
     }
     return -1;
 }

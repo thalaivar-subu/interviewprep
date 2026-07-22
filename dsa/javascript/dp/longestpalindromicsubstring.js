@@ -24,8 +24,8 @@ const isPalindrome = (left, right) => {
 }
     let longest = "";
     for (let i = 0; i < s.length; i++) {
-        let oddPalindrome = isPalindrome(s, i, i)
-        let evenPalindrome = isPalindrome(s, i, i + 1)
+        let oddPalindrome = isPalindrome(i, i)
+        let evenPalindrome = isPalindrome(i, i + 1)
         let longestPalindrome = evenPalindrome.length > oddPalindrome.length ? evenPalindrome : oddPalindrome;
         if (longestPalindrome.length > longest.length) longest = longestPalindrome;
     }

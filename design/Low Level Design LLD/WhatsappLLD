@@ -1,0 +1,70 @@
+https://www.techinterview.org/post/3233467496/lld-chat-system/
+
+WebSocket Connection Management
+Chat requires persistent bidirectional connections. WebSocket servers are stateful — each connection lives on a specific server. Challenge: if User A (on WS server 1) sends to User B (on WS server 2), server 1 must forward to server 2.
+
+Solution: Redis Pub/Sub fan-out. Each WS server subscribes to a Redis channel per connected user. When a message arrives for User B: publish to Redis channel user:{B}. All WS servers receive the publish; only the one with B’s connection delivers it.
+
+# On connection: register user's server
+redis.hset('user_server', user_id, server_id)
+redis.subscribe(f'user:{user_id}')  # this server listens for user B's messages
+
+# On message send from A to B:
+redis.publish(f'user:{B}', json.dumps(message))  # broadcast to all WS servers
+# The WS server that has B's connection delivers it
+
+
+Presence Service
+# On connect: set online
+redis.setex(f'presence:{user_id}', 30, 'online')
+redis.publish('presence_events', json.dumps({'user_id': uid, 'status': 'online'}))
+
+# Heartbeat every 20s from client: extend TTL
+redis.expire(f'presence:{user_id}', 30)
+
+# On disconnect or TTL expiry: user goes offline
+# Subscribers to presence_events receive offline notification
+Copy
+Presence information is broadcast to a user’s contacts via Redis Pub/Sub. Contacts subscribe to presence_events and filter for users they care about. At scale: use a dedicated presence service with sharded Redis.
+
+Chat(chat_id UUID, type ENUM(DIRECT,GROUP), name, created_at)
+ChatMember(chat_id, user_id, role ENUM(ADMIN,MEMBER), joined_at, last_read_message_id)
+Message(message_id UUID, chat_id UUID, sender_id UUID, content TEXT,
+        type ENUM(TEXT,IMAGE,FILE,SYSTEM), created_at, edited_at)
+-- Cassandra schema:
+-- Partition key: chat_id
+-- Clustering key: created_at DESC, message_id
+-- Enables: fetch latest N messages for a chat, paginate backwards
+
+MessageReceipt(message_id, user_id, status ENUM(DELIVERED,READ), updated_at)
+
+Message Delivery Flow
+Client sends message via WebSocket to WS server
+WS server persists to Cassandra (async, acknowledge immediately)
+WS server publishes to Kafka topic: messages
+Fan-out service consumes from Kafka:
+For each group member: publish to Redis user:{member_id}
+For offline members: enqueue push notification (APNs/FCM)
+Update message delivery receipts
+Online recipients receive via WebSocket; offline via push
+
+Read Receipts
+Track delivery and read status per message per user. Delivery receipt: when the message is delivered to the client’s device (WebSocket received or push delivered). Read receipt: when the user opens and views the message. Implementation: client sends ACK to server when message is displayed. Update MessageReceipt and update ChatMember.last_read_message_id. For group chats: show read count (N of M members have read). Aggregate: SELECT COUNT(*) FROM MessageReceipt WHERE message_id=X AND status=READ.
+
+Message Search
+Cassandra is not suited for full-text search. For message search: dual-write to Elasticsearch (async via Kafka). Elasticsearch index: message_id, chat_id, sender_id, content (text), created_at. Search: GET /search?q=keyword&chat_id=X. Search is a secondary use case — latency of seconds is acceptable. Restrict search to chats the user is a member of (filter by chat_id).
+
+Key Design Decisions
+WebSocket for real-time; fallback to long-polling for restricted networks
+Redis Pub/Sub for cross-server message routing — decouples WS servers
+Cassandra for message storage — high write throughput, time-series access pattern
+Kafka fan-out — decouples message receipt from delivery to multiple channels
+Heartbeat-based presence with TTL — handles disconnects without explicit logout
+
+Meta system design is the canonical chat system interview topic. See common questions for Meta interview: WhatsApp and Messenger chat system design.
+
+
+Snap system design covers real-time messaging. Review patterns for Snap interview: chat and messaging system design.
+
+
+LinkedIn system design covers professional messaging. See design patterns for LinkedIn interview: messaging and chat system design.

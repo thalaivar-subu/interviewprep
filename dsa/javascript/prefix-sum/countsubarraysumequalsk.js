@@ -36,6 +36,19 @@ Constraints:
  */
 
 //If Negative Numbers: O(n) time, O(n) space
+// currentPrefix - oldPrefix = k
+// oldPrefix = currentPrefix - k
+/*
+prefix=1
+
+Need
+
+1-3=-2
+
+Not found
+
+Store 1
+*/
 var subarraySum = function(nums, k) {
     let count = 0;
     let prefixSum = 0;

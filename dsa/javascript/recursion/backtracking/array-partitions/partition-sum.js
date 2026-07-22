@@ -43,15 +43,15 @@ var maxSumAfterPartitioning = function (arr, k) {
     let map = new Map();
     const helper = (i) => {
         if (i === arr.length) return 0;
+        if (map.has(i)) return map.get(i);
         let maxInGroup = 0;
         let maxCost = 0;
-        if (map.has(maxCost)) return map.get(maxCost)
         for (let len = 1; len <= k && i + len <= arr.length; len++) {
             maxInGroup = Math.max(maxInGroup, arr[i + len - 1]);
             const remaining = helper(i + len);
             maxCost = Math.max(maxCost, maxInGroup * len + remaining);
         }
-        map.set(maxCost);
+        map.set(i, maxCost);
         return maxCost;
     }
     return helper(0)

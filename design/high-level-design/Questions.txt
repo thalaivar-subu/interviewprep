@@ -1,0 +1,25 @@
+https://www.techinterview.org/post/3233474791/system-design-canon-twitter-url-shortener-rate-limiter/
+https://bytebytego.com/courses/system-design-interview/design-youtube
+
+Tier 1
+Twitter - https://www.techinterview.org/post/3233463787/system-design-twitter-timeline/
+URL Shortener
+Rate Limiter
+
+Tier 2
+Youtube ->https://bytebytego.com/courses/system-design-interview/design-youtube
+Whatsapp -> https://www.techinterview.org/post/3233467496/lld-chat-system/
+
+Design Uber / Lyft. Geospatial indexing, real-time matching, surge pricing. Senior tier.
+Design Dropbox / Google Drive. Block storage, delta sync, conflict resolution. Senior tier.
+Design a key-value store. Consistent hashing, replication, CAP trade-offs. Often the deepest of the canonical questions.
+Design search autocomplete. Trie, prefix queries, ranking. Senior tier.
+Design a notification system. Fanout, delivery guarantees, deduplication. Senior tier.
+
+bytebytego Links
+=====================================
+https://www.youtube.com/watch?v=OvufRkoD-D0 - System Design Interview – BIGGEST Mistakes to Avoid
+https://www.youtube.com/watch?v=1nENigGr-a0 - System Design Was HARD - Until You Knew the Trade-Offs
+https://www.youtube.com/watch?v=zvWKqUiovAM - Top 7 Ways to 10x Your API Performance
+https://www.youtube.com/watch?v=_1IKwnbscQU - 7 Must-know Strategies to Scale Your Database
+https://www.youtube.com/watch?v=kkeFE6iRfMM - How To Choose The Right Database?

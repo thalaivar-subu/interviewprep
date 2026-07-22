@@ -1,0 +1,15 @@
+{
+  "name": "dsaquiz",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Random question picker from dsa/javascript for self-testing before interviews.",
+  "bin": {
+    "dsaquiz": "./bin/dsaquiz.js"
+  },
+  "scripts": {
+    "start": "node bin/dsaquiz.js"
+  },
+  "engines": {
+    "node": ">=14"
+  }
+}

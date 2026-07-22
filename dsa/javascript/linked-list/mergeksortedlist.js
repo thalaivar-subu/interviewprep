@@ -24,14 +24,12 @@ var mergeKLists = function (lists) {
             return l2;
         }
     }
-    // This O(N*K)
-    for (let i = 1; i < lists.length; i++) {
-        lists[0] = merge2SortedLists(lists[0], lists[i]);
-    }
+    // Approach 1 (simple, O(N*K)): fold every list into the first.
+    // for (let i = 1; i < lists.length; i++) lists[0] = merge2SortedLists(lists[0], lists[i]);
+    // return lists[0];
 
-    // Try this Divide & Conquery - Merge Sort
-    //Time:  O(N log k)
-    // Space: O(log k)   (rounds) + recursion stack from mergeTwoLists
+    // Approach 2 (Divide & Conquer, O(N log k) time, O(log k) rounds):
+    // pair up lists and merge each pair until one list remains.
     while (lists.length > 1) {
         const merged = [];
 
@@ -41,7 +39,7 @@ var mergeKLists = function (lists) {
                 ? lists[i + 1]
                 : null;
 
-            merged.push(mergeSortedLists(l1, l2));
+            merged.push(merge2SortedLists(l1, l2));
         }
 
         lists = merged;
