@@ -1,0 +1,26 @@
+dsa/java/arrays/MoveZeros.java
+  h_06fbe936d8e25e 1-31
+dsa/java/arrays/CountNumberOfTeams.java
+  h_06fbe936d8e25e 1-31
+dsa/java/arrays/LargestCommonPrefix.java
+  h_06fbe936d8e25e 1-44
+dsa/java/arrays/LongestConsecutiveSequence.java
+  h_06fbe936d8e25e 1-45
+dsa/java/arrays/NeedleHaystack.java
+  h_06fbe936d8e25e 1-26
+dsa/java/arrays/PlusOne.java
+  h_06fbe936d8e25e 1-45
+dsa/java/arrays/MergeSortedArrays.java
+  h_06fbe936d8e25e 1-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "1ac98be2e33d00e09db6804f4a104a142cc77d38",
+  "prompts": {},
+  "humans": {
+    "h_06fbe936d8e25e": {
+      "author": "Muthu Qumar S <muthuqumar.s@gmail.com>"
+    }
+  }
+}
