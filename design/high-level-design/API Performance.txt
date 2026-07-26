@@ -1,0 +1,14 @@
+Caching - Invalidation + TTL
+Connection Pooling - New Database connection for each API bad, so use connection Pooling | not possible in Lambda so RDS proxy sits and handles
+N+1 query - join or 2 queries
+Pagination - Offset, limit
+Fast Serialization Library - for JSON
+Compression - Response payloads | brotli better compression, even cloudflare can handle by default
+Sync Logging - Awesome but might loose some log if app crashes
+
+
+Index - Scan
+Auth Data - request levl cache
+Computation do in Database itself as much as possible
+ Use HTTP keep alive or HTTP2
+
