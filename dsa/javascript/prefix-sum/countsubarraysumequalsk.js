@@ -70,8 +70,11 @@ var subarraySum = function(nums, k) {
     return count;
 };
 
-//If only positive numbers are present: O(n) time (sliding window), O(1) space
-var subarraySum = function (nums, k) {
+// Alternative for STRICTLY POSITIVE numbers only: O(n) time (sliding window), O(1) space.
+// Not valid for LC 560 itself (its constraints allow negatives and zeros, which break
+// the window's monotonicity) — kept as a contrast. Deliberately named differently so it
+// does not shadow the general solution above.
+var subarraySumPositiveOnly = function (nums, k) {
     let l = 0;
     let r = 0;
     let output = 0;
@@ -80,7 +83,8 @@ var subarraySum = function (nums, k) {
     while (r < nums.length) {
         sum += nums[r];
         while (sum > k) {
-            sum -= nums[r];
+            // shrink from the LEFT edge — nums[l], not nums[r]
+            sum -= nums[l];
             l++;
         }
         if (sum === k) output++;

@@ -63,3 +63,11 @@ Create skills  - add reference
 /schedule - automate 
 
 Plugin can use your power and do whatever described, plz chk properly
+
+## MCP = Transport Agnostic, Http/websockets or any technique
+- MCP Server of Github has all the tools like get_repos, create_repos, etc
+- Usually Service Provider will write MCP Server
+- It provides tools and its schema
+
+- Client calls get all tools from MCP server
+- Run a particular tool
