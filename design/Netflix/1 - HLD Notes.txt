@@ -1,0 +1,95 @@
+https://www.techinterview.org/post/3233474186/system-design-video-streaming-netflix-adaptive-bitrate-hls-dash-transcoding-cdn-recommendation-engine-microservices/
+
+Core services: Ingest/Transcoding pipeline, Playback Service, Open Connect CDN (OCAs), Recommendation Service, DRM License Service, plus the control-plane microservices (gateway, discovery, config).
+Flow: studio delivers master -> transcode into a ladder of ~120 streams -> segment + manifest -> pre-position on CDN edges -> user hits play -> playback service picks eligible streams -> client fetches manifest + DRM licence -> client pulls segments, switching quality per segment via ABR.
+
+Scale (from the source)
+- 200M+ subscribers, 190 countries, ~15% of global downstream bandwidth.
+- One title = ~120 encoded streams (10+ resolutions 240p-4K x multiple bitrates, plus audio tracks and subtitles).
+- Master files are 4K, 50+ GB. Recommendation engine is valued at ~$1B/yr in reduced churn.
+
+The key insight: this is a READ-ONLY, PRE-COMPUTABLE workload
+Every other system in these notes fights write contention. Video doesn't: content is written once, months before anyone watches, and then read billions of times, immutably. That single fact justifies everything else -- you can afford to spend hours of GPU time per title, generate 120 variants, and ship petabytes to edge servers in advance, because none of it is on the user's critical path. Design for pre-computation and distribution, not for write throughput.
+
+Transcoding pipeline
+1. Studio master (4K, 50GB+) uploaded to S3 via multipart upload.
+2. Encoding jobs sharded across a GPU worker fleet (FFmpeg or custom encoders) -- embarrassingly parallel, one job per (resolution, bitrate) rung.
+3. Each output split into 2-10 second segments.
+4. Manifest generated: HLS `.m3u8` or DASH `.mpd`, listing segment URLs per quality level.
+5. Segments pushed to CDN edges.
+Per-title encoding: an ML model analyses content complexity to build a ladder per title rather than one fixed ladder. Animation is cheap to encode; a fast-cut action scene is not -- a fixed ladder wastes bitrate on the former and starves the latter.
+
+Adaptive bitrate (ABR) -- the client-side algorithm
+The player, not the server, decides quality. Before each segment it picks a rung on the ladder:
+  def select_quality(buffer_secs, throughput_est, ladder):
+      if buffer_secs < PANIC_THRESHOLD:      # buffer draining, rebuffer imminent
+          return ladder.lowest               # never rebuffer, quality is negotiable
+      target = model.predict(throughput_est, buffer_secs, recent_history)
+      return highest_rung_with_bitrate_below(ladder, target)
+Three families:
+  throughput-based -- estimate bandwidth from the last segment's download speed. Simple, but reactive and jumpy.
+  buffer-based     -- steer purely on buffer occupancy (target ~30s). Stable, but slow to react to a genuine bandwidth change.
+  hybrid (Netflix) -- combine both plus an ML model trained on real playback data.
+The objective function is what matters in an interview: minimise rebuffering FIRST, maximise visual quality SECOND. A rebuffer is far more damaging to perceived quality than a lower-resolution segment, so the algorithm is deliberately asymmetric.
+
+HLS vs DASH
+- HLS: Apple's, `.m3u8` manifest, universal device support.
+- DASH: open standard, `.mpd` manifest, codec-agnostic.
+Functionally equivalent for this design -- both list per-quality segment URLs and both are fetched over plain HTTP GET. That last point is the important one: **no specialised streaming servers or protocols are needed.** Video delivery is just static file serving, which is exactly why CDNs work so well for it and why the whole architecture is cacheable.
+
+Open Connect (Netflix's own CDN) -- the real differentiator
+- Open Connect Appliances (OCAs) are custom servers Netflix places INSIDE ISP networks, each with 100+ TB of SSD/HDD pre-loaded with popular content.
+- On play, the Netflix control plane picks the nearest OCA (usually inside the subscriber's own ISP) and points the player at it. **The video bytes never cross the internet backbone.**
+- Wins: lower latency, higher throughput, fewer rebuffers, and no transit bandwidth bill -- and the ISP benefits too, which is why they host the boxes.
+- Placement strategy: popular content pre-positioned globally before release; long-tail content kept on central OCAs and fetched on demand.
+- Without your own CDN: CloudFront/Akamai/Fastly, ideally multi-CDN with per-request routing to the fastest or cheapest.
+Generalizable point: the control plane (who decides where to stream from) and the data plane (the bytes) are completely separate. The control plane is small, dynamic and centralised; the data plane is enormous, static and pushed to the edge. Splitting them this way is the pattern.
+
+Playback request flow
+1. Client sends title_id, device_type, network conditions, DRM capability.
+2. Playback service resolves eligible streams (4K on a smart TV, capped at 720p on mobile) and the assigned OCA.
+3. Client fetches the manifest.
+4. Client requests a DRM licence (Widevine / FairPlay / PlayReady); licence carries session-specific decryption keys.
+5. Client starts at low quality to fill the buffer fast, estimating bandwidth as it goes.
+6. Subsequent segments fetched at the ABR-chosen rung, targeting a ~30s buffer.
+Trick play: thumbnail sprite sheets are pre-generated so scrubbing shows previews without downloading real frames. Seeking snaps to the nearest segment boundary.
+
+Recommendations
+- Collaborative filtering (matrix factorisation / SVD, or neural CF) over similar users' viewing patterns.
+- Content-based filtering over metadata (genre, cast, director, keywords).
+- Hybrid model adds context: time of day, device, recent history, regional trends.
+- Rows on the home page ("Because you watched X", "Trending Now") are each generated by a different algorithm; titles WITHIN a row are ranked by predicted engagement.
+- Artwork personalisation: the thumbnail itself is chosen per user -- a romance viewer sees the romantic still, an action viewer sees the action still.
+- Offline Spark batch jobs build candidate sets; an online model ranks and personalises at request time.
+Same two-stage retrieval-then-rank shape as Twitter's timeline and Uber's driver matching: cheap batch narrowing, expensive online scoring on a small set.
+
+Microservices and resilience
+- Zuul (API gateway: routing, auth, rate limiting), Eureka (service discovery), Hystrix/Resilience4j (circuit breaking), Archaius (dynamic config).
+- Database-per-service: Cassandra for user profiles and viewing history, MySQL for billing, custom stores for recommendations.
+- REST for sync calls, gRPC for high-throughput internal paths, Kafka for async events (a viewing event fans out to recommendations, billing and analytics).
+- Chaos Monkey kills random production instances; Chaos Kong simulates whole-region failure. Every service must degrade gracefully -- if recommendations are down, you still get a generic home page and playback still works.
+
+How Netflix ACTUALLY does it in production
+Unusual case: the article is ALREADY describing Netflix's real architecture, not a generic one -- Open Connect, Zuul, Eureka, Hystrix and Chaos Monkey are all genuinely Netflix's and open-sourced by them. So the divergence here is TEMPORAL rather than architectural. Confidence HIGH on the below, but note the dates.
+
+- **Hystrix is deprecated.** Netflix put it in maintenance mode in late 2018 and pointed users at resilience4j. Citing Hystrix as current in an interview dates you; say "circuit breaking, historically Hystrix, now resilience4j".
+- Much of the Spring Cloud Netflix stack (Eureka, Ribbon, Zuul 1) is similarly in maintenance -- the ideas are canonical, the specific libraries are legacy. Service mesh (Envoy/Istio) now covers a lot of the same ground.
+- **VMAF** (Video Multimethod Assessment Fusion) is Netflix's open-source perceptual video quality metric, released 2016. It's the objective function behind per-title encoding -- worth naming, because "optimise bitrate for VMAF score rather than for resolution" is the actual mechanism.
+- They moved beyond per-title to **per-shot encoding** (~2018): the ladder is optimised per shot within a title, not once per title. Strictly better, since complexity varies enormously within one film.
+- Codec adoption has moved on: AV1 rolled out from ~2020 (Android first, then TVs) for meaningfully better compression than H.264/VP9.
+- Subscriber count in the article (200M) is dated; Netflix reported ~300M paid memberships around 2024-25 before it stopped publishing quarterly subscriber numbers. Moderate confidence on the exact figure.
+
+Gaps in the source article (NOT from this write-up)
+- **Live streaming.** Everything above assumes VOD, where pre-computation saves you. Live events (Netflix started doing these ~2023-24) break the core assumption: you cannot pre-transcode or pre-position content that doesn't exist yet, so you need real-time transcoding and origin-shielded fan-out. If an interviewer pivots to live, say that explicitly -- it's a different system.
+- Regional licensing/geo-blocking, which drives a lot of real catalogue complexity.
+- Offline downloads and their DRM licence lifetime.
+- Bandwidth cost negotiation with ISPs, which is really what Open Connect is about commercially.
+
+Related patterns list (see also Reference/Notes.txt)
+- Pre-compute everything when the workload is write-once/read-many; spend unlimited time off the critical path.
+- Control plane vs data plane separation -- small dynamic decisions centrally, huge static bytes at the edge.
+- Push content to the edge before it is requested (pre-positioning), rather than caching on first miss.
+- Client-side adaptive control loops (ABR) -- the server publishes options, the client picks. Pushes decision-making to where the network conditions are actually observable.
+- Two-stage candidate generation then ranking (same as Twitter, Uber).
+- Graceful degradation + chaos testing: assume every dependency is down and define the fallback.
+- Circuit breaker (see Patterns section in Reference/Notes.txt) -- Netflix is where that pattern got popular.

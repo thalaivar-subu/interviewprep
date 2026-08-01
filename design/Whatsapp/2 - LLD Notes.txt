@@ -1,0 +1,68 @@
+https://www.techinterview.org/post/3233467496/lld-chat-system/
+
+Entities
+
+Chat(chat_id UUID, type ENUM(DIRECT,GROUP), name, created_at)
+ChatMember(chat_id, user_id, role ENUM(ADMIN,MEMBER), joined_at, last_read_message_id)
+    -- last_read_message_id is the unread-count cursor: unread = messages after this id, no per-message scan
+Message(message_id UUID, chat_id UUID, sender_id UUID, content TEXT,
+        type ENUM(TEXT,IMAGE,FILE,SYSTEM), created_at, edited_at)
+    -- Cassandra: partition key = chat_id, clustering key = (created_at DESC, message_id)
+    -- chosen for the read pattern, not the entity shape: "latest N in a chat" + paginate backwards
+    -- message_id in the clustering key breaks ties when two messages share a timestamp
+MessageReceipt(message_id, user_id, status ENUM(DELIVERED,READ), updated_at)
+    -- partition by message_id; group read count = COUNT(*) WHERE message_id=X AND status=READ
+
+Redis keys (not tables -- all ephemeral)
+  user_server           HASH  user_id -> server_id      # which WS server holds this connection
+  user:{user_id}        CHANNEL                          # per-user pub/sub inbox
+  presence:{user_id}    STRING w/ 30s TTL                # absence of key == offline
+  presence_events       CHANNEL                          # presence change broadcast
+
+Connection lifecycle (WS server)
+def on_connect(user_id, server_id):
+    redis.hset('user_server', user_id, server_id)
+    redis.subscribe(f'user:{user_id}')          # this server now receives messages bound for user_id
+    redis.setex(f'presence:{user_id}', 30, 'online')
+    redis.publish('presence_events', {user_id, status: 'online'})
+
+def on_heartbeat(user_id):                       # client pings every 20s, TTL is 30s
+    redis.expire(f'presence:{user_id}', 30)
+
+# no on_disconnect handler needed for presence -- TTL expiry handles silent client deaths
+
+Send path (sender must not wait on fan-out)
+def on_message(sender_id, chat_id, content, client_msg_id):
+    if seen(client_msg_id): return cached_ack       # client retries on flaky mobile networks
+    msg = build_message(chat_id, sender_id, content)
+    cassandra.insert(msg)
+    ack_sender(msg.message_id, status='SENT')       # ACK here -- before any fan-out work
+    kafka.produce('messages', msg)                  # everything downstream is async
+    return msg
+
+Fan-out (Kafka consumer -- this is where group amplification happens)
+def on_kafka_message(msg):
+    members = chat_members(msg.chat_id)             # up to 500
+    for member in members:
+        if member == msg.sender_id: continue
+        if redis.exists(f'presence:{member}'):
+            redis.publish(f'user:{member}', msg)    # online: delivered over their WS server
+        else:
+            push_queue.enqueue(member, msg)         # offline: APNs/FCM
+        upsert MessageReceipt(msg.message_id, member, DELIVERED)
+
+Message status state machine (per message, per recipient)
+SENT -> DELIVERED -> READ
+  SENT      = server accepted and persisted it (sender's single tick)
+  DELIVERED = reached the recipient's device, via WS or push (double tick)
+  READ      = recipient's client sent an ACK on display (blue tick)
+Only ever moves forward -- a late DELIVERED ACK arriving after READ must not downgrade the status.
+
+Key design decisions
+Redis Pub/Sub for cross-server routing -- because WS connections are stateful and pinned to one server; pub/sub means no server needs to know where any other user is connected, so scaling the WS tier needs no coordination.
+ACK the sender before fan-out, Kafka in between -- because sender latency must be O(1) regardless of group size; a 500-member fan-out or an APNs outage can't be allowed to stall the send. Same decoupling as Uber's async payment capture off trip_events.
+Cassandra for messages -- because the workload is write-heavy append-only time-series with a known read pattern (latest N per chat); partition key chat_id keeps a conversation on one node.
+Presence via TTL, not explicit logout -- because mobile clients die silently; TTL fails safe (stale for <30s) where a missed logout event would show ghosts online forever.
+Idempotency on client_msg_id -- because mobile networks make clients retry sends, and duplicate messages in a chat are user-visible corruption. Same reason Splitwise keys expense creation.
+Elasticsearch fed async off the same Kafka topic, never on the send path -- search may lag seconds; sends may not.
+    NOTE: real WhatsApp cannot do this at all (E2E encrypted, server can't read content) -- see the production section in 1 - HLD Notes.txt.

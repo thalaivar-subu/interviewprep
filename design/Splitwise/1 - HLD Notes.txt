@@ -1,0 +1,78 @@
+https://www.techinterview.org/post/3233474468/system-design-design-splitwise-expense-sharing-debt-simplification-group-balances-payment-integration-currency-conversion/
+
+Core services: Group Service, Expense Service, Balance Service, Settlement/Payment Service, Currency Service, Notification Service.
+Flow: user adds expense to a group -> split calculated per participant -> ledger entries written -> balances updated atomically -> group members notified -> later, someone settles up (cash mark or real payment) -> balances updated again.
+
+Split types
+- Equal - divide evenly across participants.
+- Exact - custom per-person amount, must sum to total.
+- Percentage - weighted %, must sum to 100.
+- Shares - weighted units (A gets 2 shares, B gets 1) -> amount_A = total * 2/3.
+- Itemized - line-item level ("Alice had the steak") -> effectively N mini-expenses folded into one.
+All five reduce to the same output shape: a list of (user_id, share_amount) pairs against one payer -- that's the only thing the balance engine needs, so split-type logic lives entirely at expense-creation time, not in balance computation.
+
+Balance computation (ledger, not a running total you trust blindly)
+- Every expense write also writes a ledger entry per participant: "B owes A share_amount" -> balances are a *derived* view over the ledger, recomputable from scratch if ever in doubt.
+- Naive read: scan all expenses between A and B, net it out. Fine for a demo, O(expenses) per pair is too slow at scale -> see LLD notes for the incremental-balance-table version actually used.
+
+Debt simplification (the interesting algorithm here)
+Problem: with N people and free-form IOUs you can end up with far more payments than necessary to settle a group. Minimizing transaction count is NP-hard in general (equivalent to a min-cash-flow problem), so use a greedy heuristic instead:
+
+  def simplify_debts(net_balances):        # net_balances: {user_id: amount}, sum == 0
+      creditors = max-heap of (amount, user) where amount > 0
+      debtors   = max-heap of (-amount, user) where amount < 0
+      payments = []
+      while creditors and debtors:
+          creditor, credit = pop_max(creditors)
+          debtor, debt = pop_max(debtors)          # debt stored positive
+          amount = min(credit, debt)
+          payments.append((debtor, creditor, amount))
+          if credit > amount: push(creditors, (credit - amount, creditor))
+          if debt > amount: push(debtors, (debt - amount, debtor))
+      return payments
+
+- Not optimal, but close: a 5-person group might naively need ~10 pairwise IOUs; greedy reduces it to ~4.
+- Show both views in the UI: simplified debts (fewer payments) AND the raw expense-by-expense breakdown (for trust/audit -- "why do I owe this?").
+- Generalizes beyond Splitwise: any "who owes whom" netting problem (clearing house, internal ledger reconciliation) uses this same greedy-match-largest-pair-first pattern.
+
+Multi-currency
+- Every expense stores its own original currency + amount; conversion to a common display currency happens at read time using the *exchange rate on the expense's date*, not today's rate (historical expenses shouldn't drift as rates move).
+- Rate source: daily pull from a provider (Open Exchange Rates / Fixer.io), cached by (date, currency_pair).
+- Rounding: work in the smallest currency unit (cents), not floats; split remainders deterministically (e.g. $10 / 3 -> two people pay $3.33, one pays $3.34 -- pick who gets the remainder consistently, e.g. first participant by user_id, so repeated splits are reproducible).
+
+Settlement / payment flow
+1. Debtor opens "settle up", sees amount owed (optionally the whole group's simplified debt list via "settle all").
+2. Picks a method: mark-as-cash (no money movement) | real transfer via PayPal/Venmo/bank API | in-app wallet (adds PCI/regulatory scope, usually skipped unless asked).
+3. For real transfers: call provider with an idempotency key so a retried request can't double-charge.
+4. On success: write Settlement record, update balances, notify creditor. On failure: no balance change, surface error, retry only on transient failures.
+5. Partial settlements allowed -- remaining balance just persists as a smaller ledger entry.
+
+Consistency / idempotency (reusable pattern, not Splitwise-specific)
+- Expense write = one DB transaction: insert expense + insert one ledger row per participant, all-or-nothing -- half-written ledgers would make the group's balances lie.
+- Idempotency keys on expense creation and settlement calls -- both are exactly the kind of "client might retry on timeout" operation where duplicate execution is worse than a slow response.
+- Concurrent edits to the same expense: last-write-wins with a conflict notification is the cheap answer; operational-transform is the correct-but-expensive answer if itemized/collaborative editing matters.
+
+Gaps in the source article (worth knowing for the interview, not from this write-up)
+- What happens when a member leaves a group with a nonzero balance? Typically: block leave-group until balance is zero, or freeze their share and keep them a "ghost" participant until settled.
+- No mention of an audit/edit-history table for expenses -- interviewers will probe "someone disputes an edited expense," and "ledger entries are append-only, expense edits create a new version rather than mutating in place" is the expected answer.
+- No mention of recurring expenses (e.g. monthly rent) -- worth a one-line mention that recurring expenses are just a cron job re-invoking the normal expense-creation path on a schedule, no new architecture needed.
+
+How Splitwise ACTUALLY does it in production
+Confidence: LOWER than the Uber/Whatsapp sections -- Splitwise is a small private company that publishes far less engineering detail. Treat the stack below as "widely reported / from their own posts and job listings," not verified current-state.
+
+- **Ruby on Rails monolith on PostgreSQL**, with Redis for caching/jobs, on AWS. Not the 4-microservice + event-bus topology in the diagram above.
+- Small engineering team (order of tens, not hundreds).
+
+Why the monolith is the CORRECT answer here, not a compromise
+This is the most useful thing in this whole write-up, and it inverts the usual interview instinct:
+- Splitwise's write volume is tiny. An expense is added by a human, a few times a day, per group. There is no 300k-writes/sec firehose like Uber's location pings -- so nothing forces you off a single Postgres primary.
+- The core operation is a **multi-row transaction** (insert expense + N ledger rows, all-or-nothing). A monolith on one relational DB makes that a `BEGIN...COMMIT`. Splitting Expense Service and Balance Service across services turns the single most correctness-critical operation in the product into a distributed transaction needing saga/outbox machinery -- strictly worse, for zero scaling benefit.
+- Money-correctness matters far more than horizontal scale here. Optimize for the strongest consistency primitive you can get, which is one ACID database.
+
+So: the microservice diagram is what a system-design interview usually rewards, but the senior answer is "for this product's actual load profile, a Rails/Postgres monolith is right, and here's the scale at which I'd start splitting it" -- knowing when NOT to distribute is the signal.
+
+Related patterns list (see also Reference/Notes.txt)
+- Derived/materialized view over an append-only ledger, recomputable from source of truth -- same idea as event sourcing.
+- Idempotency keys on any client-retriable write -- same as Uber's payment capture.
+- Greedy largest-pair-first matching for netting -- generalizes to any many-to-many debt-clearing problem.
+- WebSocket + push fan-out on state change -- same shape as Whatsapp's message delivery / Uber's trip notifications.

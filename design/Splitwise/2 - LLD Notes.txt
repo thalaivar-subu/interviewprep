@@ -1,0 +1,66 @@
+https://www.techinterview.org/post/3233474468/system-design-design-splitwise-expense-sharing-debt-simplification-group-balances-payment-integration-currency-conversion/
+
+Entities
+
+User(user_id UUID, name, email, phone, default_currency, payment_methods JSON)
+Group(group_id UUID, name, type ENUM(APARTMENT,TRIP,COUPLE,OTHER), created_at)
+GroupMember(group_id, user_id, joined_at, left_at NULL)   -- left_at NULL = active member
+Expense(expense_id UUID, group_id UUID, payer_id UUID, amount, currency, description,
+        category ENUM(FOOD,RENT,TRANSPORT,ENTERTAINMENT,OTHER),
+        split_type ENUM(EQUAL,EXACT,PERCENTAGE,SHARES,ITEMIZED),
+        created_by, created_at, version)                  -- version bumps on edit, old rows kept (append-only history)
+ExpenseParticipant(expense_id, user_id, share_amount)      -- one row per participant, precomputed at write time regardless of split_type
+Settlement(settlement_id UUID, group_id UUID, from_user UUID, to_user UUID,
+           amount, currency, method ENUM(CASH,PAYPAL,VENMO,BANK,WALLET),
+           status ENUM(PENDING,COMPLETED,FAILED), idempotency_key, created_at)
+Balance(group_id, user_a UUID, user_b UUID, net_amount)    -- user_a < user_b by convention; positive = b owes a. Materialized, updated incrementally -- NOT recomputed by scanning Expense on every read.
+ExchangeRate(date, from_currency, to_currency, rate)        -- cached daily pull, keyed by (date, pair)
+
+Expense creation (single transaction -- this is the "must be atomic" part)
+def add_expense(group_id, payer_id, amount, currency, split_type, splits, idempotency_key):
+    if already_processed(idempotency_key): return existing_result   # dedupe retries
+    BEGIN TRANSACTION
+        expense = INSERT INTO Expense (...)
+        for user_id, share in splits:                     # splits computed from split_type before this call
+            INSERT INTO ExpenseParticipant (expense.id, user_id, share)
+            if user_id != payer_id:
+                delta = share if user_id > payer_id else -share   # keep Balance.user_a < user_b convention
+                a, b = min(user_id, payer_id), max(user_id, payer_id)
+                UPSERT Balance(group_id, a, b) SET net_amount += delta
+    COMMIT
+    publish('expense_added', {group_id, expense_id})       # async: push notif + websocket broadcast
+    return expense
+
+Balance read (why this beats "scan every expense")
+def get_group_balances(group_id):
+    return SELECT * FROM Balance WHERE group_id = ?        # O(members^2) rows, not O(expenses) -- read is now trivial
+# Balance table is a materialized view over the Expense/ExpenseParticipant ledger -- if it's ever suspect
+# (bug, manual DB fix), it's fully recomputable by replaying all expenses for that group.
+
+Settlement flow
+def settle(group_id, from_user, to_user, amount, method, idempotency_key):
+    if already_processed(idempotency_key): return existing_result
+    settlement = INSERT Settlement(status=PENDING, ...)
+    if method == CASH:
+        settlement.status = COMPLETED
+    else:
+        result = payment_gateway.charge(method, amount, idempotency_key=idempotency_key)
+        settlement.status = COMPLETED if result.ok else FAILED
+    if settlement.status == COMPLETED:
+        a, b = min(from_user, to_user), max(from_user, to_user)
+        sign = 1 if to_user > from_user else -1
+        UPSERT Balance(group_id, a, b) SET net_amount -= sign * amount   # settlement reduces the debt
+        notify(to_user, 'settlement_received')
+    return settlement
+
+Settlement state machine
+PENDING -> COMPLETED   (cash: immediate; provider payment: on gateway success)
+PENDING -> FAILED      (gateway decline / timeout -- balances untouched)
+FAILED -> PENDING       (user retries with a NEW idempotency_key; retrying with the same key just replays the cached result)
+
+Key design decisions
+Balance is a materialized/incremental table, not a scan-on-read -- because group balance lookups are the hottest read path (every app open) and expenses are comparatively rare writes; same "cache the derived view" idea as scale-db.txt's Materialized Views entry in Reference/Notes.txt.
+Expense edits create a new version instead of mutating in place -- because disputed/edited group expenses need an audit trail, same append-only-log idea as event sourcing.
+Idempotency keys on both expense creation and settlement -- because both are client-retriable network calls where double-execution (double-charge, duplicate expense) is worse than a slow retry; same pattern as Uber's payment capture.
+Amounts stored in integer minor units (cents), never floats -- avoids rounding drift when splitting non-divisible totals across participants.
+Balance keyed as (min(user_a,user_b), max(user_a,user_b)) with a signed net_amount -- one row per pair instead of two, avoids the two-rows-can-drift-out-of-sync bug.

@@ -1,0 +1,78 @@
+<svg viewBox="0 0 960 580" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgtitle svgdesc" style="background: var(--bg-page, #0b0b0c); font-family: var(--font-voice, system-ui, sans-serif);">
+  <title id="svgtitle">Twitter timeline system architecture</title>
+  <desc id="svgdesc">Clients call an API Gateway routing to a Tweet Service on the write path and a Timeline Service on the read path. Tweet Service persists tweets and publishes to Kafka, which a Fanout Service consumes to push tweet ids into per-follower Redis timelines. Timeline Service reads those precomputed timelines, merges celebrity pulls, hydrates tweet bodies from cache, and passes candidates to a Ranking Service.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--text-secondary, #8a8a8e)"/>
+    </marker>
+  </defs>
+
+  <!-- solid: primary request and event path -->
+  <g stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.5" fill="none" marker-end="url(#arrow)">
+    <line x1="480" y1="70" x2="480" y2="99"/>
+    <line x1="480" y1="150" x2="190" y2="189"/>
+    <line x1="480" y1="150" x2="480" y2="189"/>
+    <line x1="165" y1="250" x2="165" y2="299"/>
+    <line x1="165" y1="340" x2="165" y2="379"/>
+    <line x1="615" y1="220" x2="655" y2="220"/>
+    <line x1="165" y1="440" x2="165" y2="489"/>
+  </g>
+
+  <!-- dashed: direct datastore reads and writes, routed through the clear channel between columns -->
+  <g stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.3" fill="none" stroke-dasharray="5 4" opacity="0.75" marker-end="url(#arrow)">
+    <path d="M300,225 L322,225 L322,470 L480,470 L480,489"/>
+    <path d="M345,238 L332,238 L332,455 L100,455 L100,489"/>
+    <path d="M615,238 L640,238 L640,470 L795,470 L795,489"/>
+  </g>
+
+  <!-- Row 1: clients -->
+  <rect x="380" y="20" width="200" height="50" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="480" y="42" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Clients</text>
+  <text x="480" y="58" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">web / mobile</text>
+
+  <!-- Row 2: gateway -->
+  <rect x="330" y="100" width="300" height="50" rx="8" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="480" y="122" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">API Gateway</text>
+  <text x="480" y="138" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">auth, routing, rate limit</text>
+
+  <!-- Row 3: services. Left column is the write path, right two are the read path. -->
+  <g>
+    <rect x="30" y="190" width="270" height="60" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="165" y="216" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Tweet Service</text>
+    <text x="165" y="233" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">write path, snowflake ids</text>
+
+    <rect x="345" y="190" width="270" height="60" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="480" y="216" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Timeline Service</text>
+    <text x="480" y="233" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">read, merge celebrities</text>
+
+    <rect x="660" y="190" width="270" height="60" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="795" y="216" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Ranking Service</text>
+    <text x="795" y="233" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">scores ~500 candidates</text>
+  </g>
+
+  <!-- Row 4: Kafka, narrow and on the write column only, leaving the right side clear -->
+  <rect x="30" y="300" width="270" height="40" rx="6" fill="var(--surface-2, #1f1f22)" stroke="var(--text-accent, #6c8cff)"/>
+  <text x="165" y="318" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-accent, #6c8cff)">Kafka</text>
+  <text x="165" y="332" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">topic: tweets</text>
+
+  <!-- Row 5: fanout consumer -->
+  <rect x="30" y="380" width="270" height="60" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="165" y="406" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Fanout Service</text>
+  <text x="165" y="423" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">skips celebrities</text>
+
+  <!-- Row 6: data stores -->
+  <g>
+    <rect x="30" y="490" width="270" height="60" rx="8" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="165" y="516" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Redis Timelines</text>
+    <text x="165" y="533" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">800 ids/user, ~3.2TB</text>
+
+    <rect x="345" y="490" width="270" height="60" rx="8" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="480" y="516" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Tweet Store</text>
+    <text x="480" y="533" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">source of truth, graph</text>
+
+    <rect x="660" y="490" width="270" height="60" rx="8" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="795" y="516" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Tweet / User Cache</text>
+    <text x="795" y="533" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">hydrate bodies by id</text>
+  </g>
+</svg>

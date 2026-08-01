@@ -1,0 +1,71 @@
+https://www.techinterview.org/post/3233474162/system-design-ride-sharing-uber-lyft-matching-algorithm-eta-calculation-surge-pricing-driver-location-tracking/
+
+Entities
+
+Driver(driver_id UUID, name, vehicle_type ENUM(SEDAN,SUV,XL), rating, status ENUM(OFFLINE,AVAILABLE,EN_ROUTE,ON_TRIP), current_geohash)
+Rider(rider_id UUID, name, rating, default_payment_method_id)
+Trip(trip_id UUID, rider_id UUID, driver_id UUID, status ENUM(REQUESTED,MATCHED,DRIVER_ARRIVING,IN_PROGRESS,COMPLETED,CANCELLED),
+     pickup_lat, pickup_lng, drop_lat, drop_lng,
+     requested_at, matched_at, started_at, completed_at,
+     estimated_fare, final_fare, surge_multiplier,
+     otp_code, otp_attempts, otp_verified_at)   -- otp_code generated on MATCHED, cleared after otp_verified_at is set
+LocationPing(driver_id, lat, lng, geohash, recorded_at)  -- Kafka stream, not a table; latest ping mirrored into Redis GEO
+SurgeZone(h3_cell_id, supply_count, demand_count, multiplier, updated_at)  -- Redis hash, recomputed every 1-2 min
+Payment(payment_id UUID, trip_id UUID, rider_charge, driver_payout, platform_commission, status ENUM(AUTHORIZED,CAPTURED,FAILED,REFUNDED))
+
+Driver location write path
+# every 3-5s from driver app
+redis.geoadd('drivers:{shard}', lng, lat, driver_id)
+kafka.produce('driver_locations', {driver_id, lat, lng, ts})   # async, for analytics/ETA-matrix/fraud, not on request path
+
+Matching read path
+# 1. candidate search, expanding radius
+candidates = redis.geosearch('drivers:{shard}', from_lonlat=(pickup_lng, pickup_lat),
+                              byradius=(3, 'km'), count=20, asc=True)
+if len(candidates) == 0:
+    candidates = redis.geosearch('drivers:{shard}', from_lonlat=(pickup_lng, pickup_lat),
+                                  byradius=(5, 'km'), count=20, asc=True)
+
+# 2. rank: eta (from geohash-pair matrix, cheap) + rating + acceptance_rate + vehicle match
+ranked = rank(candidates, weights={'eta': 0.5, 'rating': 0.2, 'accept_rate': 0.2, 'vehicle_match': 0.1})
+
+# 3. parallel offer to top N, first accept wins
+offer_ids = broadcast_offer(ranked[:5], timeout_s=20)
+winner = wait_for_first_accept(offer_ids, timeout_s=20)
+release_others(offer_ids, except=winner)
+
+Surge lookup at pricing time
+zone = h3.latlng_to_cell(pickup_lat, pickup_lng, resolution=8)
+mult = redis.hget(f'surge:{zone}', 'multiplier') or 1.0
+estimated_fare = (base_fare + per_km * distance_km + per_min * duration_min) * mult
+
+OTP verification (gates DRIVER_ARRIVING -> IN_PROGRESS)
+# on MATCHED
+trip.otp_code = random_digits(4)
+notify_rider(trip.otp_code)          # shown in rider app only, never sent to driver
+
+# driver enters code at pickup
+def verify_pickup_otp(trip, entered_code):
+    if trip.otp_attempts >= 5:
+        raise Locked("too many attempts, ask rider to resend")
+    if entered_code != trip.otp_code:
+        trip.otp_attempts += 1
+        raise Mismatch()
+    trip.otp_verified_at = now()
+    trip.status = IN_PROGRESS
+    trip.started_at = now()
+
+Trip state machine
+REQUESTED -> MATCHED -> DRIVER_ARRIVING -> IN_PROGRESS -> COMPLETED
+                                            ^-- OTP match required to cross this transition
+                                                        \-> CANCELLED (from any pre-IN_PROGRESS state)
+Each transition is the single writer of Trip.status; WebSocket/notification fan-out is a side-effect subscriber, not the source of truth.
+
+Key design decisions
+Redis GEO (geohash-backed sorted set) for live driver index -- only latest position kept, O(N + log M) radius query.
+Geographic sharding by geohash prefix -- each shard/Redis instance owns a region, keeps candidate sets small.
+H3 hex cells (not geohash rectangles) for surge zones -- uniform neighbor distance avoids grid-edge artifacts in demand/supply aggregation.
+Parallel top-5 offer instead of sequential -- bounds worst-case matching latency to one offer timeout, not N sequential timeouts.
+Batch assignment (Hungarian/LP) as a fallback path under high load instead of always-greedy nearest-match.
+Pre-auth + final-settle payment flow -- rider never pays more than the upfront-confirmed price unless there's a flagged deviation.
+Kafka decouples the write-heavy location ping stream from the low-latency matching read path (same fan-out-via-queue idea as WhatsappLLD's message delivery).

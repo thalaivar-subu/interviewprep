@@ -1,9 +1,0 @@
-CQRS(Command Query Responsibility Segregatio) - Separate Read, Separate Write DB
-EventSourcing -> Sync Job where you store what to sync, then read that and sync right. Example - Git 
-Ambassador - Gateway, Istio
-Leader Election - Kafka Zookeeper, avoid conflicts single decision maker
-Circuit Breaker - Closed - Opens when crosses failure threshold, then rechecks after timeout in halfopen state, then success Closed
-Sharding - Mongodb, Casandra - Shard by userId, groupId, etc
-Pub/Sub
-
-Monolith to Microservice - Strangler Pattern

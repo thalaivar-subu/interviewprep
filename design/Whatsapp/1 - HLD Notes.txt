@@ -1,0 +1,73 @@
+https://www.techinterview.org/post/3233467496/lld-chat-system/
+
+Core services: WebSocket Servers (stateful connections), Chat API (REST for history/group mgmt), Presence Service, Fan-out Service, Push Service (APNs/FCM), Search Indexer.
+Flow: client sends over WebSocket -> WS server persists + acks immediately -> publishes to Kafka -> fan-out service routes to each member (Redis Pub/Sub if online, push notification if offline) -> recipient ACKs -> delivery/read receipts updated.
+
+Scale (from the source)
+- 500M users, 100M DAU, 10B messages/day -> ~115k msg/sec average, assume 3-5x at peak (~500k/sec).
+- Groups up to 500 members -> one inbound message can mean 500 outbound deliveries. Fan-out amplification is the real load, not the ingest rate.
+
+WebSocket connection management (the core problem)
+WebSocket connections are stateful -- each one lives on ONE specific server. If A is connected to WS-1 and B to WS-2, WS-1 has no direct way to reach B. Options:
+  a) Central registry lookup: store user->server, then make a direct RPC to that server. Fewer hops, but needs service discovery + the registry becomes a hot dependency on every send.
+  b) Redis Pub/Sub fan-out (what this design uses): every WS server subscribes to a channel per connected user; publishing to user:{B} reaches all servers, and only the one holding B's connection delivers.
+Pub/Sub wins here because it makes WS servers *stateless with respect to each other* -- no server needs to know where any other user is connected, so adding/removing WS servers needs no coordination.
+
+  # on connect
+  redis.hset('user_server', user_id, server_id)
+  redis.subscribe(f'user:{user_id}')
+
+  # on send A -> B
+  redis.publish(f'user:{B}', message)     # every WS server sees it; only B's server delivers
+
+Presence (heartbeat + TTL, not explicit logout)
+  redis.setex(f'presence:{user_id}', 30, 'online')     # on connect
+  redis.expire(f'presence:{user_id}', 30)              # client heartbeat every 20s
+  # no heartbeat -> key expires -> user is offline. No explicit logout needed.
+Why TTL instead of an "offline" write on disconnect: clients die without warning (app killed, tunnel drops, battery). A TTL fails *safe* -- worst case someone shows online for <30s. An explicit-logout design would show ghosts online forever.
+Broadcast presence changes on a `presence_events` channel; contacts subscribe and filter. At scale this needs a dedicated presence service on sharded Redis -- presence is far higher write volume than messaging (every heartbeat from every device).
+
+Message delivery flow
+1. Client -> WS server over the open socket.
+2. WS server writes to Cassandra and ACKs the sender immediately (don't make the sender wait on fan-out).
+3. WS server publishes to Kafka topic `messages`.
+4. Fan-out service consumes; for each member of the chat:
+     online  -> redis.publish(f'user:{member}', msg)
+     offline -> enqueue APNs/FCM push
+   and writes delivery receipts.
+Why Kafka in the middle rather than fanning out inline: the send path stays O(1) for the sender regardless of group size, and a 500-member fan-out (or a push-provider outage) can't slow down or fail the sender's ACK. Same decoupling reason as Uber's payment capture off `trip_events`.
+
+Receipts (sent / delivered / read)
+- sent = server accepted it; delivered = it reached the device; read = the user actually viewed it.
+- Client sends an ACK when the message is displayed -> update MessageReceipt + advance ChatMember.last_read_message_id.
+- Group read state = COUNT of READ receipts for that message ("read by 4 of 12"), not a per-member list in the hot path.
+- last_read_message_id is what makes unread counts cheap: unread = messages in the chat after that id, no per-message scan.
+
+Message search
+Cassandra can't do full-text search. Dual-write to Elasticsearch asynchronously off the same Kafka topic (never synchronously on the send path -- search being seconds stale is fine, a slow send is not). Filter results by the chats the user is actually a member of.
+NOTE: this section is the generic design and is exactly what real WhatsApp cannot do -- see the production section below.
+
+How WhatsApp ACTUALLY does it in production
+Confidence: HIGH that these were true, but DATED -- sourced from public talks/posts of the ~2012-2017 era (pre- and early-post-Meta-acquisition). Assume internals have moved on since.
+
+- Erlang/OTP on FreeBSD, not JVM/Go microservices. The server began as a fork of ejabberd (an XMPP server) and was heavily rewritten. The BEAM VM gives one cheap lightweight process per connection -- that is the whole reason ~50 engineers served ~900M users. Single boxes were tuned to 2-3M concurrent connections.
+- Mnesia (Erlang's built-in distributed DB) as the message queue -- NOT Cassandra.
+- **Messages are deleted after delivery.** There is no permanent server-side message archive. The server is store-and-FORWARD: hold a message only while the recipient is offline, drop it once delivered. The Cassandra design above (partition by chat_id, clustering by created_at DESC, paginate backwards through history) describes a system WhatsApp deliberately did NOT build -- history lives on the user's device.
+- End-to-end encryption (Signal Protocol, rolled out 2016) makes that structural rather than a choice: the server cannot read message content at all.
+  -> This kills the Elasticsearch dual-write above. Server-side search is impossible under E2E; WhatsApp search runs on-device over the local message DB.
+  -> Receipts and routing metadata become the only per-message data the server meaningfully holds.
+
+Where reality diverges from the textbook answer, and how to use it
+The Cassandra+Kafka+Redis design is what an interviewer asking "design WhatsApp" usually wants, because it exercises fan-out, partitioning and storage tradeoffs. The strong move is to give that, then add: "real WhatsApp inverted this -- no server-side message store, delete-on-delivery, E2E encrypted -- trading away server-side search and easy multi-device history sync for radically less storage and a much smaller ops footprint." Naming that tradeoff, and what it costs, is the differentiator.
+
+Reference links (from the source article)
+- Source: https://www.techinterview.org/post/3233467496/lld-chat-system/
+- Guides hub: https://www.techinterview.org/system-design-interview-guides/
+- The article also links company-specific guides for Meta (WhatsApp/Messenger), Snap (chat & messaging) and LinkedIn (professional messaging) -- same core design, different emphasis. Exact URLs not captured; reachable from the guides hub above.
+
+Related patterns list (see also Reference/Notes.txt)
+- Pub/Sub for cross-node routing so stateful nodes never need to know about each other -- the generalizable trick here.
+- Queue-decoupled fan-out so sender latency is independent of recipient count -- same shape as Uber's async payment capture.
+- Heartbeat + TTL for liveness instead of explicit teardown -- fails safe when clients die silently.
+- Async dual-write to a search index off the same event stream (CQRS-ish read model, see Patterns section in Reference/Notes.txt).
+- Cassandra partition/clustering key choice driven by the read pattern (latest-N + backward pagination), not by the entity shape.

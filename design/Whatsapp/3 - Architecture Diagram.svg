@@ -1,0 +1,90 @@
+<svg viewBox="0 0 960 580" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgtitle svgdesc" style="background: var(--bg-page, #0b0b0c); font-family: var(--font-voice, system-ui, sans-serif);">
+  <title id="svgtitle">WhatsApp chat system architecture</title>
+  <desc id="svgdesc">Mobile clients connect through a load balancer to stateful WebSocket servers, a REST Chat API, and a Presence service. WebSocket servers persist messages to Cassandra and publish to Kafka. Kafka is consumed by a Fan-out service, a Push service for offline users, and a Search Indexer. Fan-out routes to online users via Redis Pub/Sub; the Search Indexer writes to Elasticsearch; Presence reads and writes Redis directly.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--text-secondary, #8a8a8e)"/>
+    </marker>
+  </defs>
+
+  <!-- solid: primary message path -->
+  <g stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.5" fill="none" marker-end="url(#arrow)">
+    <line x1="480" y1="70" x2="480" y2="99"/>
+    <line x1="480" y1="150" x2="190" y2="189"/>
+    <line x1="480" y1="150" x2="480" y2="189"/>
+    <line x1="480" y1="150" x2="770" y2="189"/>
+    <path d="M300,220 L330,220 L330,280 L420,280 L420,299"/>
+    <path d="M400,340 L400,358 L350,358 L350,379"/>
+    <path d="M480,340 L480,366 L590,366 L590,379"/>
+    <path d="M560,340 L560,352 L790,352 L790,379"/>
+  </g>
+
+  <!-- dashed: direct datastore access, routed through the clear channels either side of Kafka -->
+  <g stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.3" fill="none" stroke-dasharray="5 4" opacity="0.75" marker-end="url(#arrow)">
+    <line x1="165" y1="250" x2="165" y2="489"/>
+    <line x1="900" y1="250" x2="900" y2="489"/>
+    <path d="M790,440 L790,465 L480,465 L480,489"/>
+    <path d="M450,425 L470,425 L470,475 L795,475 L795,489"/>
+  </g>
+
+  <!-- Row 1: clients -->
+  <rect x="380" y="20" width="200" height="50" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="480" y="42" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Mobile Clients</text>
+  <text x="480" y="58" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">persistent WebSocket</text>
+
+  <!-- Row 2: LB -->
+  <rect x="330" y="100" width="300" height="50" rx="8" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="480" y="122" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Load Balancer / Gateway</text>
+  <text x="480" y="138" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">sticky WS, auth</text>
+
+  <!-- Row 3: edge services -->
+  <g>
+    <rect x="30" y="190" width="270" height="60" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="165" y="216" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">WebSocket Servers</text>
+    <text x="165" y="233" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">stateful, one per connection</text>
+
+    <rect x="345" y="190" width="270" height="60" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="480" y="216" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Chat API</text>
+    <text x="480" y="233" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">REST history, groups</text>
+
+    <rect x="660" y="190" width="270" height="60" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="795" y="216" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Presence Service</text>
+    <text x="795" y="233" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">heartbeat + TTL</text>
+  </g>
+
+  <!-- Row 4: Kafka (narrow and centred, leaving clear channels at both sides) -->
+  <rect x="345" y="300" width="270" height="40" rx="6" fill="var(--surface-2, #1f1f22)" stroke="var(--text-accent, #6c8cff)"/>
+  <text x="480" y="318" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-accent, #6c8cff)">Kafka</text>
+  <text x="480" y="332" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">topic: messages</text>
+
+  <!-- Row 5: consumers -->
+  <g>
+    <rect x="250" y="380" width="200" height="60" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="350" y="406" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Fan-out Service</text>
+    <text x="350" y="423" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">per-member routing</text>
+
+    <rect x="500" y="380" width="180" height="60" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="590" y="406" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Push Service</text>
+    <text x="590" y="423" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">APNs / FCM, offline</text>
+
+    <rect x="700" y="380" width="180" height="60" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="790" y="406" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Search Indexer</text>
+    <text x="790" y="423" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">async, seconds stale</text>
+  </g>
+
+  <!-- Row 6: data stores -->
+  <g>
+    <rect x="30" y="490" width="270" height="60" rx="8" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="165" y="516" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Cassandra</text>
+    <text x="165" y="533" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">messages, receipts</text>
+
+    <rect x="345" y="490" width="270" height="60" rx="8" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="480" y="516" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Elasticsearch</text>
+    <text x="480" y="533" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">message search</text>
+
+    <rect x="660" y="490" width="270" height="60" rx="8" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="795" y="516" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Redis</text>
+    <text x="795" y="533" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">pub/sub, presence TTL</text>
+  </g>
+</svg>

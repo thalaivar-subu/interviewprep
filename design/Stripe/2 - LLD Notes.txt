@@ -1,0 +1,100 @@
+https://www.techinterview.org/post/3233474171/system-design-payment-system-stripe-idempotency-double-charge-prevention-ledger-reconciliation-pci-compliance-webhooks/
+
+Entities
+
+Order(order_id UUID, user_id, amount_minor BIGINT, currency CHAR(3),
+      charge_status ENUM(PENDING,CHARGING,CHARGED,FAILED,FULFILLED), version INT)
+    -- version = optimistic lock. UNIQUE(order_id, charge_status) blocks concurrent duplicate transitions.
+    -- amount_minor is always integer cents. Never a float, anywhere, for any reason.
+PaymentIntent(payment_intent_id, order_id UUID, status, amount_minor, currency, created_at)
+    -- mirror of Stripe's object. Deliberately a separate table: their state machine is not ours.
+LedgerEntry(ledger_entry_id UUID, transaction_id UUID, account_id, amount_minor BIGINT,
+            currency CHAR(3), created_at, description, metadata JSON)
+    -- amount_minor: positive = debit, negative = credit. Entries sharing a transaction_id MUST sum to 0.
+    -- APPEND ONLY. No UPDATE, no DELETE, ever. Corrections are new reversal rows.
+    -- INDEX (account_id, created_at) -> balance is a range scan
+IdempotencyKey(key PK, request_hash, result JSON, created_at)
+    -- request_hash guards against a client reusing one key for a different payload
+ProcessedEvent(event_id PK, processed_at)   -- webhook dedupe; PK does the work, no app logic needed
+
+No Account balance column anywhere on purpose. balance(account) = SUM(amount_minor) over its LedgerEntry rows.
+A stored balance can drift out of sync with the entries that justify it; a derived one is definitionally correct.
+
+Charge path (three independent defences against double-charge)
+def charge(order_id, amount_minor, idempotency_key, request_hash):
+    cached = idempotency_keys.get(idempotency_key)
+    if cached:
+        if cached.request_hash != request_hash: raise KeyReuseWithDifferentPayload()
+        return cached.result                              # defence 1: replay, never re-execute
+
+    with db.transaction(isolation=SERIALIZABLE):
+        order = orders.select_for_update(order_id)        # defence 3: serialise concurrent mutations
+        if order.charge_status != PENDING:
+            return order                                   # someone else already advanced it
+        order.charge_status = CHARGING                     # defence 2: UNIQUE(order_id, status) rejects a racer
+        order.version += 1
+
+    result = gateway.charge(amount_minor, idempotency_key=idempotency_key)   # pass the SAME key downstream
+    idempotency_keys.put(idempotency_key, request_hash, result)
+    return result
+
+Ledger write (the two entries are one transaction or neither happens)
+def record(transaction_id, entries):
+    assert sum(e.amount_minor for e in entries) == 0       # refuse to write an unbalanced transaction
+    with db.transaction(isolation=SERIALIZABLE):
+        for e in entries: ledger_entries.insert(e)         # append only
+
+# $100 charge
+record(txn, [Entry(customer_receivable, +10000), Entry(revenue, -10000)])
+# $100 refund -- a NEW pair of entries, not a delete of the pair above
+record(txn2, [Entry(revenue, +10000), Entry(customer_receivable, -10000)])
+
+Webhook handler (at-least-once, unordered, untrusted until verified)
+def on_webhook(raw_body, signature_header):
+    verify_signature(raw_body, signature_header)           # FIRST. unverified == forged "you got paid".
+    event = parse(raw_body)
+    if processed_events.exists(event.id): return 200       # dedupe on PK
+    enqueue(event)                                          # real work is async
+    processed_events.insert(event.id)
+    return 200                                              # within 5s, else Stripe retries and amplifies load
+
+def apply_event(event):
+    order = orders.get(event.order_id)
+    if not valid_transition(order.charge_status, event.type):
+        return                                              # out-of-order delivery: ignore, do not force
+    advance(order, event)
+
+Order state machine
+PENDING -> CHARGING -> CHARGED -> FULFILLED
+              |
+              +-------> FAILED -> PENDING     (user retries; a NEW idempotency key for a new attempt)
+Transitions are gated by valid_transition(), never applied blindly from a webhook, because webhooks arrive
+out of order and a late "charging" event must not drag a CHARGED order backwards.
+
+Reconciliation (daily, and a 5-minute sweep)
+def reconcile(report_date):
+    theirs = stripe.settlement_report(report_date)          # source: Stripe
+    ours   = payment_intents.for_date(report_date)          # source: us
+    for pi in theirs:
+        mine = ours.get(pi.payment_intent_id)
+        if not mine:                       flag('missing_in_ledger', pi)
+        elif mine.amount != pi.amount:     flag('amount_mismatch', pi, mine)
+        elif mine.status != pi.status:     flag('status_mismatch', pi, mine)
+    for mine in ours:
+        if mine.payment_intent_id not in theirs: flag('missing_in_stripe', mine)
+    # unresolved flags older than 24h escalate
+
+def sweep():        # every 5 min: the pull-based backstop for missed webhooks
+    for pi in stripe.list_payment_intents(since=now() - 15*MIN):
+        if diverges_from_local(pi): apply_event(synthesize_event(pi))
+
+Key design decisions
+Idempotency key generated by the CLIENT and reused across retries -- because a server-generated key would be new on every retry, which is exactly the case it needs to catch. Same pattern as Uber's capture and Splitwise's settlement.
+Three overlapping defences (cached result, unique constraint, row lock) rather than one -- because each covers a different failure: an app-level retry, a concurrent duplicate request, and an interleaved transaction respectively. Any one alone leaves a hole.
+Ledger append-only with derived balances -- because a mutable balance can silently diverge from its entries, and correcting by reversal keeps both the error and the fix auditable. Same immutable-log-plus-derived-view shape as Splitwise's Balance table.
+Refuse to write a transaction whose entries do not sum to zero -- because that single assertion catches an entire class of business-logic bugs without knowing anything about the business logic.
+Single unsharded Postgres at SERIALIZABLE for the ledger -- because cross-account atomicity is the invariant being protected, and sharding converts it into a distributed transaction. If forced to scale, shard by account_id, the boundary the invariant does not cross.
+Integer minor units everywhere, never floats -- because float rounding in money is unrecoverable once it compounds. Same rule as Splitwise.
+Signature verification before ANY other webhook processing -- because an unverified endpoint accepts forged success events, which is a direct path to shipping goods for free.
+A polling sweep alongside webhooks -- because a push channel is an optimisation, never a source of truth; Stripe cannot detect a bug that happens after your handler already returned 200.
+Stripe's PaymentIntent kept in its own table rather than merged into Order -- because they are two independent state machines owned by two different systems, and pretending otherwise is what makes reconciliation impossible.

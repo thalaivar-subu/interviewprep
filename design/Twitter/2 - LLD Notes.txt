@@ -1,0 +1,58 @@
+https://www.techinterview.org/post/3233474168/system-design-twitter-news-feed-timeline-fanout-on-write-fanout-on-read-celebrity-problem-ranking-caching/
+
+Entities
+
+User(user_id UUID, username, profile, follower_count, following_count)
+    -- follower_count is denormalised onto User purely so the fanout path can branch on it without a graph query
+Tweet(tweet_id BIGINT, user_id UUID, content, media_urls, created_at, like_count, retweet_count, deleted_at NULL)
+    -- tweet_id is a Snowflake: time-sortable, so it doubles as the timeline sort key. No separate created_at index needed.
+    -- deleted_at is a tombstone; timeline entries are NEVER purged, they just fail to hydrate (see read path)
+Follow(follower_id, followee_id, created_at)
+    -- stored TWICE: partitioned by follower_id (who do I follow, read path)
+    --           and by followee_id (who follows me, fanout path). Different queries, so denormalise.
+Timeline -- Redis sorted set, not a table:  key home:{user_id}, member = tweet_id, score = tweet_id, capped at 800
+SocialGraphEdge(user_id, target_id, type ENUM(BLOCK,MUTE))  -- applied as a read-time filter, never at fanout time
+
+Write path (post a tweet)
+def post_tweet(user_id, content, idempotency_key):
+    if seen(idempotency_key): return cached          # client retries are common on mobile
+    tweet = Tweet(tweet_id=snowflake(), user_id=user_id, content=content)
+    db.insert(tweet)                                 # source of truth, durable before anything else
+    kafka.produce('tweets', tweet)                   # fanout is async, never blocks the poster
+    return tweet                                     # author sees their own tweet immediately
+
+def on_tweet_event(tweet):                            # Fanout Service, Kafka consumer
+    author = users.get(tweet.user_id)
+    if author.follower_count >= CELEBRITY_THRESHOLD:  # ~10_000
+        return                                        # skip fanout entirely, pulled at read time
+    for follower_id in followers_of(tweet.user_id):   # partitioned by followee_id
+        redis.zadd(f'home:{follower_id}', {tweet.tweet_id: tweet.tweet_id})
+        redis.zremrangebyrank(f'home:{follower_id}', 0, -801)   # keep newest 800
+
+Read path (load timeline)
+def get_timeline(user_id, limit=20):
+    ids = redis.zrevrange(f'home:{user_id}', 0, 799)              # precomputed, in-network
+    for celeb in celebrity_followees(user_id):                     # the accounts fanout skipped
+        ids += redis.zrevrange(f'user_tweets:{celeb}', 0, 49)
+    ids = sorted(ids, reverse=True)[:500]                          # snowflake ids sort by time for free
+    tweets = tweet_cache.multi_get(ids)                            # hydrate bodies once, not per timeline
+    tweets = [t for t in tweets if t and not t.deleted_at          # tombstoned tweets drop out here
+              and not blocked_or_muted(user_id, t.user_id)]
+    return ranker.score(tweets, user_features(user_id))[:limit]
+
+Tweet visibility lifecycle
+PUBLISHED -> DELETED (tombstone)
+  Deleting sets deleted_at on the source row ONLY. The tweet_id stays in every follower's Redis timeline --
+  purging it from millions of sorted sets would cost more than the original fanout. It simply fails to
+  hydrate on the next read and disappears. Same mechanism covers author suspension and block/mute.
+There is no richer state machine here: a tweet is immutable once posted, so the interesting state lives in the
+fanout job (queued -> consumed -> written) rather than in the entity.
+
+Key design decisions
+Fan out on write for normal users, pull at read for celebrities -- because reads outnumber writes 100:1, so precomputing is right for the common case, but one 50M-follower account would cost 50M writes per tweet. The threshold is the escape hatch for the heavy tail.
+Store tweet_ids in timelines, hydrate bodies from a shared cache -- because a viral tweet is then cached once instead of copied into millions of timelines; this is what keeps the timeline cache at ~3.2TB instead of terabytes per popular tweet.
+Snowflake ids as the Redis sorted-set score -- because a time-encoded id gives free chronological ordering and cursor pagination with no second index and no central sequence server.
+Follow graph stored in both directions -- because "who do I follow" and "who follows me" are different partitions, and the fanout path cannot afford a scatter-gather.
+Tombstone and filter on read, never purge on delete -- because the data is already fanned out; undoing a fanout costs the same as doing it. Reuses the append-only-plus-filter idea from Splitwise's expense versioning.
+Fanout runs off Kafka, not inline in the post request -- because the author's POST must not wait on N follower writes. Same "ACK first, fan out async" shape as Whatsapp's message delivery.
+Idempotency key on post -- because mobile clients retry, and a duplicate tweet is user-visible. Same reason Splitwise keys expense creation and Uber keys payment capture.

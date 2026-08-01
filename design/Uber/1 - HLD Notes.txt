@@ -1,0 +1,103 @@
+https://www.techinterview.org/post/3233474162/system-design-ride-sharing-uber-lyft-matching-algorithm-eta-calculation-surge-pricing-driver-location-tracking/
+
+Core services: Location Service, Matching Service, Pricing Service, Trip Service, Payment Service, Notification Service.
+Flow: rider requests -> pricing calc -> rider confirms -> driver matching -> driver accepts -> location streaming -> arrival -> trip start -> trip complete -> payment -> ratings.
+
+Geohashing (the pattern, not just this problem)
+A geohash is just the bits of a binary search on the map, packed into base32 chars. Prefix = the leading (coarsest) bits = which big box you're in; more chars appended = more bits = smaller box inside that same big box. That's why same-prefix means "same cell, one of several precisions."
+
+  def geohash(lat, lon, precision=8):
+      lat_range, lon_range = [-90, 90], [-180, 180]
+      bits, even = [], True          # alternate: lon bit, lat bit, lon, lat, ...
+      while len(bits) < precision * 5:
+          axis_range = lon_range if even else lat_range
+          val = lon if even else lat
+          mid = (axis_range[0] + axis_range[1]) / 2
+          bit = 1 if val > mid else 0
+          axis_range[:] = [mid, axis_range[1]] if bit else [axis_range[0], mid]
+          bits.append(bit)
+          even = not even
+      return base32_encode(bits)     # pack every 5 bits -> 1 char
+
+- Precision = char count: 5 chars ~ 5km cell, 7 chars ~ 150m cell -> shard by prefix, expand search by shortening prefix.
+- Edge flaw: two points meters apart across a cell boundary can share almost no prefix -> always also check the 8 neighbor cells, not just prefix match.
+- Redis GEO (GEOADD/GEOSEARCH) stores this geohash as a sorted-set score internally:
+    GEOADD drivers -122.4194 37.7749 "driver:42"
+    GEOSEARCH drivers FROMLONLAT -122.4194 37.7749 BYRADIUS 5 km ASC COUNT 20   # O(N + log M)
+
+H3 (Uber's own indexing, used here for surge zones)
+Hexagonal hierarchical spatial index instead of geohash's rectangles. Hexagons have equal distance to all neighbors (a rectangle's diagonal neighbor is farther than its edge neighbor), so "neighboring cell" logic and distance approximations are more uniform -> better for aggregating demand/supply per zone and for surge-zone boundaries that don't create weird step artifacts at grid edges.
+
+Driver location tracking
+- 1M active drivers -> ~200k-333k location updates/sec (ping every 3-5s).
+- Store only latest position per driver (not full history) in the geospatial index (Redis GEO).
+- Geographic sharding: split the city into regions by geohash prefix; each shard/Redis instance owns a region.
+- Full GPS trail still streamed to Kafka -> time-series store (InfluxDB/TimescaleDB) for analytics, route optimization, fraud detection.
+- Once matched, rider gets driver position via WebSocket every 3-5s (server subscribes to that driver's location stream).
+
+Matching algorithm
+1. Geospatial search for available drivers within 3km, expand to 5km if none.
+2. ETA to pickup: routing API/OSRM, or precomputed geohash-to-geohash travel time matrix (updated hourly) for the initial candidate filter (cheap, approximate).
+3. Rank candidates by ETA, driver rating, acceptance rate, vehicle type match.
+4. Broadcast offer to top 3-5 candidates simultaneously (not sequential) with a 15-30s accept window; first accept wins, others released.
+   -> sequential offers could take 60-90s; parallel offers get this under 15s.
+5. Under high demand: don't match greedily one rider at a time -- batch pending riders+drivers and solve as an assignment problem (Hungarian algorithm / linear programming) to minimize total wait time.
+
+Surge pricing
+- Divide the city into H3 hex zones. Per zone, track supply (available drivers) and demand (ride requests in last 5 min).
+- multiplier = f(demand/supply): no surge below ratio 1.2, sigmoid/step increase from 1.2x up to a cap (~5x) as ratio grows toward 3x+.
+- Recompute per zone every 1-2 min, cache in Redis for fast lookup during pricing calc.
+- Show the multiplier to the rider before confirmation (transparency) -- also economically doubles as a lever to pull in more drivers and shed price-sensitive demand.
+
+ETA calculation
+- Pre-match (cheap, approximate): geohash-cell-to-geohash-cell historical travel time matrix, refreshed hourly.
+- Post-match (accurate): live routing API/OSRM call using current driver GPS + live traffic, recalculated every 30s.
+- ML layer (XGBoost/LightGBM) on top of routing output, trained on historical trips, features = distance, time of day, day of week, per-segment congestion index, weather, events.
+
+OTP verification at pickup (not covered in the source article, but standard in every real ride-hailing app)
+Purpose: proves the rider getting in the car is the one who actually requested the trip -- stops wrong-pickups and "steal the ride" fraud where a bystander hops into a car meant for someone else.
+- On MATCHED, Trip Service generates a short numeric OTP (4 digits), stores it on the trip, pushes it to the rider's app (shown on screen, not sent to the driver).
+- Rider reads the code aloud / shows screen to driver; driver types it into their app.
+- Trip only transitions DRIVER_ARRIVING -> IN_PROGRESS if the entered code matches -- OTP check is a gate on that one state transition, not a separate service.
+- Rate-limited: lock after ~5 wrong attempts, driver can request rider to resend/redisplay; OTP is single-use and expires with the trip (regenerated if trip is reassigned to a new driver).
+- Some apps swap this for a QR code or a driver-facing photo/plate confirmation instead of digits -- same purpose, different medium.
+
+Payment/settlement (flow, in order)
+1. Quote (before trip):
+     fare_estimate = (base_fare + per_km*est_distance + per_min*est_duration) * surge_multiplier
+     -> shown to rider, rider confirms.
+2. Pre-auth (before trip, no money moves yet):
+     gateway.authorize(payment_method_token, amount = fare_estimate * 1.2)   # buffer for detours
+     -> just a hold, like a hotel deposit.
+3. Trip runs; actual distance/time recorded.
+4. On completion, compute actual fare and decide what the rider owes:
+     fare_final = (base_fare + per_km*actual_distance + per_min*actual_duration) * surge_multiplier
+     charge_amount = min(fare_final, fare_estimate)          # rider never pays more than what they confirmed
+     if fare_final > fare_estimate * 1.5: flag_for_review()  # e.g. driver took a big detour
+5. Capture (money actually moves now):
+     gateway.capture(auth_id, charge_amount)                 # settles against the pre-auth hold from step 2
+6. Settlement / split:
+     platform_fee   = charge_amount * commission_rate   # 20-30%
+     driver_payout += (charge_amount - platform_fee) + tip   # tip added on top, not commissioned
+7. Driver payouts are batched (daily/weekly), not per-trip; tips pass through 100% to the driver.
+
+How Uber ACTUALLY does it in production
+Sources: Uber engineering blog + open-sourced tools, mostly ~2015-2019 era -- high confidence these existed and were core; lower confidence they're still the current shape.
+
+- **Storage: not Postgres.** Uber publicly migrated Postgres -> MySQL in 2016 (write amplification + replication problems at their write volume), then built **Schemaless** on top of MySQL: an append-only, sharded, schema-agnostic datastore. Later succeeded by **Docstore**. So "trips in Postgres" in the diagram is the generic answer, not Uber's.
+- **Dispatch: DISCO** (Dispatch Optimization), their matching engine -- the real implementation of the "Matching Service" box.
+- **Ringpop**: Uber's open-source library for consistent hashing + SWIM gossip membership, used to shard stateful dispatch across nodes. This is how the geo-sharding above actually happens in production -- not a Redis instance per region, but application-level consistent hashing over a gossiping ring. Ties directly to the consistent-hashing notes in Reference/Notes.txt.
+- **H3**: the hex grid described above is genuinely Uber's, open-sourced 2018. This part of the generic answer is correct.
+- **Kafka**: correct and then some -- Uber is one of the largest Kafka deployments anywhere (trillions of messages/day), with **uReplicator** for cross-datacenter mirroring.
+- **Cadence**: Uber's durable workflow-orchestration engine (open-sourced; later forked into Temporal). Long-running multi-step flows -- trip lifecycle, payment capture/retry/payout -- run as durable workflows rather than ad-hoc queue consumers. This is the real answer to "what if the payment step crashes halfway": the workflow engine resumes it, you don't hand-roll retry state.
+- **M3**: their metrics/monitoring stack.
+
+Where reality diverges from the textbook answer
+The generic design reaches for a managed datastore per concern (Postgres, Redis GEO). Uber's scale pushed them to build in-house primitives instead (Schemaless, Ringpop, Cadence) -- the interview-relevant point is *why*: at their write volume, off-the-shelf replication and sharding became the bottleneck, so the sharding logic moved up into the application layer.
+
+Related patterns list (see also Reference/Notes.txt)
+- Geospatial index (Redis GEO / H3) for proximity queries.
+- Optimistic parallel-offer matching to cut tail latency vs sequential retries.
+- Batch/assignment-problem matching under load (Hungarian algorithm) vs greedy nearest-match.
+- Pre-auth + final settlement money flow (common to any marketplace with variable final price: ride-hailing, food delivery).
+- Geographic sharding by geohash prefix -- same idea as sharding by userId/groupId elsewhere, just spatial key.

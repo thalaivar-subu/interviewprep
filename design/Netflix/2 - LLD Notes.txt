@@ -1,0 +1,71 @@
+https://www.techinterview.org/post/3233474186/system-design-video-streaming-netflix-adaptive-bitrate-hls-dash-transcoding-cdn-recommendation-engine-microservices/
+
+Entities
+
+Title(title_id UUID, name, type ENUM(MOVIE,EPISODE), duration_secs, release_at, metadata JSON)
+Asset(asset_id UUID, title_id UUID, kind ENUM(VIDEO,AUDIO,SUBTITLE),
+      codec, resolution, bitrate_kbps, language, segment_count, storage_prefix)
+    -- ~120 Asset rows per Title: the encoding ladder. Immutable once published.
+EncodingJob(job_id UUID, title_id UUID, rung, status ENUM(QUEUED,RUNNING,DONE,FAILED), attempts, worker_id)
+    -- one job per ladder rung, embarrassingly parallel; retried independently on failure
+Manifest(title_id, device_profile, format ENUM(HLS,DASH), url)
+    -- generated per device profile, since eligible rungs differ (4K on TV, 720p cap on mobile)
+ViewingEvent(user_id, title_id, position_secs, quality_rung, rebuffer_count, event_at)
+    -- Kafka stream, not a table. Fans out to recommendations, billing and analytics.
+Bookmark(user_id, title_id, position_secs, updated_at)   -- "continue watching"; last-write-wins is fine
+OCA(oca_id, isp_asn, region, capacity_tb, cached_title_ids)  -- control-plane view of edge appliances
+
+Note there is no "video bytes" table anywhere. Segments are objects in S3 and files on OCAs, addressed by
+convention (storage_prefix + rung + segment index). The DB only ever stores pointers and metadata.
+
+Transcode pipeline (fan out per rung, not per title)
+def on_master_uploaded(title_id, master_s3_key):
+    ladder = per_title_ladder(analyze_complexity(master_s3_key))   # ML: animation needs fewer bits than action
+    for rung in ladder:
+        EncodingJob.create(title_id, rung, status=QUEUED)
+    # workers pull jobs independently; one failed rung retries alone, it does not restart the title
+
+def run_job(job):
+    encode(master, job.rung)            # ffmpeg on a GPU worker
+    segments = split(output, seconds=range(2, 10))
+    s3.put_all(segments, prefix=storage_prefix(job))
+    job.status = DONE
+    if all_jobs_done(job.title_id):
+        write_manifests(job.title_id)   # only now is the title playable
+        cdn.pre_position(job.title_id)  # push to OCAs BEFORE release, not on first request
+
+Playback start
+def start_playback(user_id, title_id, device_type, drm_type):
+    assert entitled(user_id, title_id)                       # subscription + regional licensing
+    profile  = device_profile(device_type)                   # caps resolution, codec, drm
+    manifest = Manifest.get(title_id, profile)
+    oca      = select_oca(user_id.ip_asn, title_id)          # control plane picks the edge box
+    licence  = drm.issue_licence(user_id, title_id, drm_type)  # session-scoped decryption keys
+    return {manifest_url: oca.rewrite(manifest.url), licence: licence}
+    # after this the control plane is OUT of the loop. All segment traffic is plain HTTP GET to the OCA.
+
+Client-side ABR loop (runs once per segment, on the device)
+def next_segment_quality(buffer_secs, last_segment_throughput, ladder):
+    if buffer_secs < PANIC_SECS:                 # ~10s: rebuffer is imminent
+        return ladder.lowest                     # asymmetric on purpose, a rebuffer hurts more than soft pixels
+    if buffer_secs > TARGET_SECS:                # ~30s: buffer healthy, spend bandwidth on quality
+        return step_up(ladder, current)          # step, do not jump, to avoid visible quality oscillation
+    target = predict_throughput(last_segment_throughput, history)
+    return highest_rung_below(ladder, target * SAFETY_FACTOR)
+
+Encoding job state machine
+QUEUED -> RUNNING -> DONE
+            |
+            +-----> FAILED -> QUEUED   (retry with backoff, capped attempts)
+A Title is only publishable once every rung is DONE. Partial ladders are not served -- a missing rung would
+make ABR step into a 404 mid-playback, which is worse than simply not offering that quality.
+
+Key design decisions
+Ladder rungs encoded as independent jobs -- because a 50GB 4K master times ~120 outputs is hours of GPU work; per-rung granularity means one flaky encode retries alone instead of restarting the whole title.
+Pre-position content on OCAs before release, rather than filling the cache on first miss -- because a launch-day cache miss storm would hit the origin from every region at once. Only viable because content is known in advance, unlike Twitter timelines.
+Segments served as plain HTTP objects, no streaming protocol -- because it makes the entire data plane cacheable by ordinary CDN machinery, and keeps the control plane out of the byte path after playback starts.
+Quality chosen on the CLIENT, not the server -- because only the device can observe its own real throughput and buffer state; the server just publishes the ladder.
+ABR biased toward avoiding rebuffers over maximising resolution -- because perceived quality collapses on a stall but degrades gently with bitrate.
+Device profile resolved server-side at playback start -- because entitlement, DRM and resolution caps are policy, and policy must not be enforceable by a client the user controls.
+Viewing events go to Kafka, not synchronous writes -- because playback must not depend on the recommendation or billing pipelines being up. Same "ACK first, fan out async" shape as Twitter's fanout and Whatsapp's message delivery.
+Assets are immutable once published -- because they are already replicated to hundreds of edge appliances; a re-encode publishes a new asset version rather than mutating one in place, same append-only reasoning as Twitter's tombstones.

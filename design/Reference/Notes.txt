@@ -1,0 +1,101 @@
+Scattered reference notes — distributed systems patterns, API performance, DB scaling, question bank. Not tied to a single topic; check here before writing up a new design.
+
+== Patterns ==
+CQRS (Command Query Responsibility Segregation) - Separate Read, Separate Write DB
+EventSourcing -> Sync Job where you store what to sync, then read that and sync right. Example - Git
+Ambassador - Gateway, Istio
+Leader Election - Kafka Zookeeper, avoid conflicts single decision maker
+Circuit Breaker - Closed - Opens when crosses failure threshold, then rechecks after timeout in halfopen state, then success Closed
+Sharding - Mongodb, Casandra - Shard by userId, groupId, etc
+Pub/Sub
+
+Monolith to Microservice - Strangler Pattern
+
+== API Performance ==
+Caching - Invalidation + TTL
+Connection Pooling - New Database connection for each API bad, so use connection Pooling | not possible in Lambda so RDS proxy sits and handles
+N+1 query - join or 2 queries
+Pagination - Offset, limit
+Fast Serialization Library - for JSON
+Compression - Response payloads | brotli better compression, even cloudflare can handle by default
+Sync Logging - Awesome but might loose some log if app crashes
+
+Index - Scan
+Auth Data - request levl cache
+Computation do in Database itself as much as possible
+Use HTTP keep alive or HTTP2
+
+== Scale DB ==
+Materialized Views - PreComputed Complex Query Results | Catch - Refresh Data Periodically & can be resource intensive
+Factors to check is refresh frequency and perofmance improvement
+
+Denormalization - Facebook denormalized users and post in one meta table | complexity in writes and more data store
+
+Vertical Scaling - Beef up CPU | Singel Point Of failure
+
+Database Caching - Movie metadata fetched from cache server instead of the DB
+
+Replication - Copy has fault tolerance | Sync/async replication | Sync increase latency | Async imnprove perforamnce but stale data
+Storage and maintenance more
+
+Sharding -
+
+== Questions / Topic list ==
+
+https://www.techinterview.org/post/3233474791/system-design-canon-twitter-url-shortener-rate-limiter/
+https://bytebytego.com/courses/system-design-interview/design-youtube
+https://www.techinterview.org/system-design-interview-guides/
+Tier 1
+Twitter -> see design/Twitter/ | https://www.techinterview.org/post/3233463787/system-design-twitter-timeline/
+URL Shortener
+Rate Limiter
+
+Tier 2
+Youtube -> https://bytebytego.com/courses/system-design-interview/design-youtube
+Whatsapp -> see design/Whatsapp/
+Netflix / video streaming. ABR, transcoding ladder, Open Connect CDN. -> see design/Netflix/
+Stripe / payment system. Idempotency, double-entry ledger, webhooks, reconciliation. -> see design/Stripe/
+Splitwise. Debt simplification, multi-currency, ledger. -> see design/Splitwise/
+
+Design Uber / Lyft. Geospatial indexing, real-time matching, surge pricing. Senior tier. -> see design/Uber/
+Design Dropbox / Google Drive. Block storage, delta sync, conflict resolution. Senior tier.
+Design a key-value store. Consistent hashing, replication, CAP trade-offs. Often the deepest of the canonical questions.
+Design search autocomplete. Trie, prefix queries, ranking. Senior tier.
+Design a notification system. Fanout, delivery guarantees, deduplication. Senior tier.
+
+bytebytego Links
+=====================================
+https://www.youtube.com/watch?v=OvufRkoD-D0 - System Design Interview – BIGGEST Mistakes to Avoid
+https://www.youtube.com/watch?v=1nENigGr-a0 - System Design Was HARD - Until You Knew the Trade-Offs
+https://www.youtube.com/watch?v=zvWKqUiovAM - Top 7 Ways to 10x Your API Performance
+https://www.youtube.com/watch?v=_1IKwnbscQU - 7 Must-know Strategies to Scale Your Database
+https://www.youtube.com/watch?v=kkeFE6iRfMM - How To Choose The Right Database?
+https://www.youtube.com/watch?v=nH4qjmP2KEE - Top 7 Most-Used Distributed System Patterns
+
+
+Stripe Interview Experience - Position: Staff Platform Engineer
+
+Round 1 – Infrastructure at Global Payments Scale
+- How do you design a control plane that survives region-wide database failovers without losing audit trails or payment state?
+- Walk through building policy-as-code that actually stops shadow traffic from hitting production ledgers.
+- What's your strategy for rolling out global rate limiting without breaking payment flows during traffic spikes?
+
+Round 2 – Reliability, Scaling & Chaos
+- Design an incident response process for a full Stripe outage caused by a misapplied infrastructure change.
+- How do you ensure zero-downtime deploys across multiple regions and tenants?
+- Explain how you'd use chaos engineering to test payment system resilience.
+
+Round 3 – Security & Compliance
+- How do you isolate workloads for different Stripe products while maintaining auditability?
+- Walk through your approach to enforcing financial data residency and encryption at rest + in transit.
+
+Round 4 – Leadership & Communication
+- How would you explain a complex infra failure to non-technical stakeholders?
+- Describe a time you influenced a team decision on platform tooling or architecture.
+
+Final Round – System Design
+- Design a multi-tenant, PCI-DSS compliant observability platform for Stripe's infrastructure.
+
+
+
+Redis pub/sub latency is often sub millisecond - better than Kafka

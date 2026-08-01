@@ -1,0 +1,95 @@
+https://www.techinterview.org/post/3233474168/system-design-twitter-news-feed-timeline-fanout-on-write-fanout-on-read-celebrity-problem-ranking-caching/
+
+Core services: Tweet Service, Fanout Service, Timeline Service, Ranking Service, plus Redis timeline cache and object storage/CDN for media.
+Flow: user posts -> tweet stored -> event to Kafka -> fanout pushes tweet_id into each follower's Redis timeline (unless author is a celebrity) -> on read, Timeline Service merges precomputed timeline + celebrity pulls -> Ranking Service scores ~500 candidates -> hydrate full tweet objects -> return top 20.
+
+Scale (from the source)
+- 500M+ users; reads outnumber writes ~100:1 -> optimise the read path, pay on write.
+- Timeline cache: 800 tweet IDs per user x 8 bytes x 500M users = ~3.2TB of Redis. Storing IDs not tweet bodies is what keeps that number sane.
+- A 50M-follower account tweeting 10x/day = 500M timeline writes/day from ONE user, if you naively fan out.
+
+Fanout-on-write vs fanout-on-read (the whole problem in one tradeoff)
+- Fanout-on-WRITE (push): on post, append tweet_id to every follower's precomputed timeline. Read = one O(1) Redis range query. Cost: write amplification -- 1M followers = 1M Redis writes per tweet.
+- Fanout-on-READ (pull): store nothing precomputed; at read time fetch recent tweets from everyone you follow and K-way merge. Cost: slow reads, hundreds of lookups + merge per timeline load.
+- The general pattern: you are choosing WHERE to pay the fan-out cost -- once per write, or once per read. With a 100:1 read:write ratio, push is obviously right... until one account's follower count makes a single write cost more than all the reads it saves.
+
+Hybrid (what the design actually does) -- threshold ~10,000 followers
+  if author.follower_count < 10_000:  push to all follower timelines   # cheap, most users
+  else:                               store in author index only        # pull at read time
+On read, merge the precomputed timeline with a live pull of the celebrity accounts you follow. You pay a small merge cost per read, but only for the handful of big accounts a user follows -- instead of paying 50M writes per celebrity tweet.
+Generalizes to: any fan-out system with a heavy-tailed distribution (followers, group size, subscribers) needs a per-entity escape hatch, not one global strategy. The tail is what kills you, not the average.
+
+Snowflake IDs (reusable pattern, worth knowing by itself)
+Tweet IDs are time-sortable 64-bit integers generated without any central coordinator:
+  1  bit  unused (sign)
+  41 bits timestamp in ms since a custom epoch   -> ~69 years of range
+  10 bits machine/worker id                       -> 1024 generator nodes
+  12 bits per-ms sequence counter                 -> 4096 ids per ms per node
+
+  def snowflake(ts_ms, worker_id, seq):
+      return ((ts_ms - EPOCH) << 22) | (worker_id << 12) | seq
+
+Why it matters here: because the ID itself encodes time, a timeline is just a sorted set scored by tweet_id -- no separate created_at index, sorting comes free, and pagination is "give me IDs less than X". And no central sequence server means no single write bottleneck. Contrast with a UUID (random, unsortable) or a DB auto-increment (needs coordination).
+
+Ranking (chronological -> scored)
+  candidates  = redis.zrevrange(f'home:{uid}', 0, 799)   # in-network, precomputed
+  candidates += pull_recent(celebrity_followees)          # merged at read time
+  candidates  = candidates[:500]
+  ranked      = model.predict_engagement(candidates, user_features)
+  return ranked[:20]
+Feature groups fed to the model:
+  tweet       -- recency, media type, length, hashtags
+  author      -- relationship strength, engagement rate, follower count
+  user        -- inferred interests, active hours, device
+  interaction -- recent engagement patterns, trending topics
+Note the shape: cheap retrieval narrows millions -> ~500, then an expensive model ranks only those. Same candidate-generation-then-ranking split as any recommender (and the same idea as Uber narrowing to 20 nearby drivers before ranking them).
+
+Caching layers
+  Timeline cache  Redis sorted sets   800 tweet IDs per user, ~3.2TB total
+  Tweet cache     Redis/Memcached     full tweet objects by id; hot tweets kept longer
+  User cache      Redis               profile data for rendering
+Store IDs in the timeline and hydrate bodies separately -- one popular tweet is then cached ONCE instead of copied into millions of timelines. This is the single biggest memory saver in the design.
+
+Storage
+  source tweets        Postgres / wide-column   (strong consistency on write)
+  precomputed timelines wide-column, Cassandra-style (write-heavy, append-friendly)
+  follow graph          graph DB / wide-column, partitioned BOTH ways (by follower_id and by followee_id)
+  media                 S3 + CDN
+The follow graph is stored twice on purpose: "who do I follow" (read path) and "who follows me" (fanout path) are different queries, and denormalising avoids a scatter-gather on every post.
+
+Observability
+Fan-out lag and cache hit rate are the two metrics that tell you the design is holding. Fan-out lag is the real user-visible SLO -- if the queue backs up, followers simply don't see the tweet, with no error anywhere.
+
+Gaps in the source article (worth having answers ready, NOT from this write-up)
+- **Deletes.** With fanout-on-write the tweet_id is already sitting in millions of Redis timelines. You do NOT go purge them. Mark the tweet deleted in the source store and filter at hydration time -- the ID stays, it just resolves to nothing. Same trick for suspended authors and blocked/muted users.
+- **Unfollow** has the identical problem, and the identical answer: filter at read time rather than rewriting timelines.
+- **New follow** is the mirror case: your precomputed timeline has none of their history. Either backfill their recent tweets into your timeline, or accept that only new posts appear.
+- No mention of rate limiting or spam/abuse controls on the write path, which in reality gate fanout entirely.
+
+How Twitter ACTUALLY does it in production
+Confidence: HIGH on existence, but split by era. The infra items are from ~2010-2015 talks and posts and are DATED. The ranking items are from Twitter's own March 2023 open-source release of its recommendation algorithm, which is the freshest primary source of any topic in these notes. Anything after the X rebrand is unknown to me.
+
+Infrastructure (~2010-2015 era, dated)
+- Migrated off the original Ruby on Rails monolith (the "fail whale" years) to JVM/Scala services -- **Finagle** is their open-source RPC framework from that effort.
+- **Snowflake** is genuinely Twitter's, open-sourced 2010. The bit layout above is theirs.
+- **Manhattan** -- their in-house distributed key-value store, built ~2014 to replace Cassandra for most workloads. So "Postgres or wide-column" above is the generic answer, not theirs.
+- Home timelines really were Redis-backed with a fanout-on-write design, and the ~800-entry cap in the source article is Twitter's actual number (from Raffi Krikorian's "Timelines at Scale" talk, ~2013).
+- **Earlybird** for real-time search indexing; **Storm** then **Heron** for stream processing; **GraphJet** for the real-time interaction graph.
+
+Ranking (March 2023 open-source, recent and primary)
+- Candidate sourcing pulls ~1500 candidates, roughly 50/50 in-network (people you follow) and out-of-network -- notably larger than the ~500 the article states.
+- **SimClusters** (community detection) and **TwHIN** (graph embeddings) power out-of-network candidate retrieval.
+- **RealGraph** predicts user-to-user interaction likelihood -- the "relationship strength" feature above.
+- **Heavy Ranker**, a ~48M-parameter neural net, does the final scoring, followed by heuristic filters and diversity rules.
+
+Where reality diverges from the textbook answer
+The article presents the 10K threshold as a clean rule. In practice the hybrid is fuzzier -- Twitter fanned out on write for the overwhelming majority of accounts and special-cased only the extreme tail (millions of followers), because at 10K followers a write fanout is still trivially cheap. The bigger divergence is the ranking half: the generic design treats ranking as one model over ~500 candidates, whereas the real system is a multi-stage retrieval-plus-ranking pipeline with distinct in-network and out-of-network candidate sources feeding a large neural ranker. If asked to go deep, that two-stage split is the thing to talk about.
+
+Related patterns list (see also Reference/Notes.txt)
+- Push vs pull fan-out, and the hybrid escape hatch for heavy-tailed distributions -- the transferable idea here.
+- Precomputed read model updated off an event stream (CQRS: write path and read path have different stores).
+- Store IDs, hydrate bodies separately -- avoids duplicating one hot object into millions of caches.
+- Tombstone-and-filter-on-read instead of purge-on-delete, when the data is already fanned out (see the Gaps section).
+- Coordination-free time-sortable IDs (Snowflake) as an alternative to central sequences.
+- Cheap candidate generation then expensive ranking -- same two-stage shape as Uber's "geosearch 20 nearby, then rank".
+- Denormalising the follow graph both directions, because read-path and write-path queries differ.

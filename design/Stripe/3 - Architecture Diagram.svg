@@ -1,0 +1,71 @@
+<svg viewBox="0 0 960 580" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgtitle svgdesc" style="background: var(--bg-page, #0b0b0c); font-family: var(--font-voice, system-ui, sans-serif);">
+  <title id="svgtitle">Merchant payment system architecture with Stripe</title>
+  <desc id="svgdesc">The browser tokenizes card data directly with Stripe so raw card numbers never reach the merchant backend. The backend API creates payment intents through a Payment Service, which writes to an append-only double-entry Ledger in Postgres and calls Stripe. Stripe sends webhooks to a Webhook Receiver that verifies signatures and deduplicates events, and a Reconciliation job polls Stripe on a schedule as a backstop for missed webhooks.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--text-secondary, #8a8a8e)"/>
+    </marker>
+  </defs>
+
+  <!-- solid: primary request path -->
+  <g stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.5" fill="none" marker-end="url(#arrow)">
+    <line x1="200" y1="105" x2="200" y2="169"/>
+    <line x1="200" y1="230" x2="200" y2="289"/>
+    <line x1="300" y1="320" x2="614" y2="320"/>
+    <line x1="760" y1="290" x2="760" y2="231"/>
+    <line x1="700" y1="170" x2="480" y2="170"/>
+    <line x1="820" y1="170" x2="820" y2="229"/>
+  </g>
+
+  <!-- dashed: card data path that bypasses the merchant entirely, plus datastore writes -->
+  <g stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.3" fill="none" stroke-dasharray="5 4" opacity="0.75" marker-end="url(#arrow)">
+    <path d="M300,60 L760,60 L760,109"/>
+    <line x1="200" y1="350" x2="200" y2="429"/>
+    <line x1="380" y1="200" x2="380" y2="429"/>
+  </g>
+
+  <!-- Browser -->
+  <rect x="30" y="35" width="270" height="70" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="165" y="62" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Browser + Stripe.js</text>
+  <text x="165" y="79" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">tokenizes card, keeps you SAQ-A</text>
+  <text x="165" y="95" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">raw PAN never hits your server</text>
+
+  <!-- Merchant API -->
+  <rect x="65" y="170" width="270" height="60" rx="8" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="200" y="196" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Merchant API</text>
+  <text x="200" y="213" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">receives token only</text>
+
+  <!-- Payment Service -->
+  <rect x="65" y="290" width="235" height="60" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="182" y="316" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Payment Service</text>
+  <text x="182" y="333" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">idempotency, state machine</text>
+
+  <!-- Stripe (external) -->
+  <rect x="615" y="290" width="290" height="60" rx="8" fill="var(--surface-2, #1f1f22)" stroke="var(--text-accent, #6c8cff)"/>
+  <text x="760" y="316" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-accent, #6c8cff)">Stripe</text>
+  <text x="760" y="333" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">authorize, capture, settle</text>
+
+  <!-- Webhook receiver -->
+  <rect x="615" y="170" width="170" height="60" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="700" y="196" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Webhook Rcvr</text>
+  <text x="700" y="213" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">verify sig, dedupe, ack 5s</text>
+
+  <!-- Reconciliation -->
+  <rect x="800" y="170" width="130" height="60" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="865" y="196" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Recon Job</text>
+  <text x="865" y="213" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">pull sweep, 5 min</text>
+
+  <!-- Data stores -->
+  <rect x="65" y="430" width="235" height="60" rx="8" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="182" y="456" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Ledger (Postgres)</text>
+  <text x="182" y="473" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">append only, SERIALIZABLE</text>
+
+  <rect x="330" y="430" width="235" height="60" rx="8" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="447" y="456" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Orders + Keys</text>
+  <text x="447" y="473" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">idempotency, processed events</text>
+
+  <!-- legend -->
+  <text x="30" y="530" font-size="10" fill="var(--text-secondary, #8a8a8e)">Dashed top path: card data goes browser to Stripe directly, never through the merchant backend. That single arrow is what keeps PCI scope at SAQ-A.</text>
+  <text x="30" y="548" font-size="10" fill="var(--text-secondary, #8a8a8e)">Webhooks are at-least-once and unordered, so the Recon Job polls Stripe independently. A push channel is an optimisation, never the source of truth.</text>
+</svg>
