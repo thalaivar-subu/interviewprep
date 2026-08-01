@@ -590,3 +590,28 @@ Already on AWS, just need a simple queue?           -> SQS
 - ✅ `min.insync.replicas=2`
 
 Kafka uses LZ4/Zstd
+
+# Kafka Leader Election (Short)
+
+### Normal Leader Election
+- If Leader broker fails, Kafka Controller elects a new Leader from the **ISR (In-Sync Replicas)**.
+- Fast failover (typically milliseconds to a few seconds).
+
+Example:
+Leader(B1) ❌
+Followers: B2, B3 (ISR)
+
+→ B2 becomes new Leader ✅
+
+---
+
+### Preferred Leader Election
+- Kafka tries to move leadership back to the **preferred replica** (usually the first replica) for balanced load after the original broker recovers.
+
+---
+
+### Unclean Leader Election
+- If **no ISR exists**, Kafka can elect an **out-of-sync replica** (if `unclean.leader.election.enable=true`).
+- ✅ Restores availability.
+- ❌ May lose committed data.
+- **Usually disabled in production.**
