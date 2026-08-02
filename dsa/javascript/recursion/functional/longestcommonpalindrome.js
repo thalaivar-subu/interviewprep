@@ -34,6 +34,7 @@ s consists only of lowercase English letters.
  * @return {number}
  * O(2^n) time worst case (no memoization), O(n) recursion space
  */
+// EDGE   - a matched PAIR adds +2 (two chars consumed, not one)
 var longestPalindromeSubseq = function (s) {
     const dfs = (left, right) => {
         if (left > right) return 0;

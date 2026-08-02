@@ -25,6 +25,7 @@ digits[i] is a digit in the range ['2', '9'].
  * https://leetcode.com/problems/letter-combinations-of-a-phone-number/description/
  * O(4^n * n) time (up to 4 letters/digit, string concat costs n), O(n) recursion space
  */
+// LEAF   - the built string IS the answer; push it, nothing returns
 var letterCombinations = function (digits) {
     if (digits.length === 0) {
         return [];

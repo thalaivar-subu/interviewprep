@@ -39,6 +39,7 @@ Constraints:
  * @return {number}
  * O(n * k) time, O(n) space (memoized by index)
  */
+// EDGE   - each group formed adds max*len to the path
 var maxSumAfterPartitioning = function (arr, k) {
     let map = new Map();
     const helper = (i) => {

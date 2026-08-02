@@ -32,6 +32,7 @@ Constraints:
  * @return {boolean}
  * O(n * target) time (memoized), O(n * target) space
  */
+// LEAF   - remaining===0 IS success -> true; edges free, || short-circuits
 var canPartition = function (nums) {
     let total = nums.reduce((a, b) => a + b, 0);
     if (total % 2 !== 0) return false

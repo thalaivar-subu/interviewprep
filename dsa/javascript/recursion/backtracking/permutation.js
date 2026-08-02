@@ -3,6 +3,7 @@
  * @return {number[][]}
  * O(n * n!) time (n! permutations, O(n) includes check each), O(n) recursion space
  */
+// LEAF   - push when the path uses every element
 var permute = function (nums) {
     let permutations = [];
     const generate = (arr) => {

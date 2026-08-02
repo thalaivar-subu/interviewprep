@@ -36,6 +36,7 @@ All elements of candidates are distinct.
  * @return {number[][]}
  * O(2 pow N)
  */
+// LEAF   - push when remaining hits 0; loop at i (reuse allowed)
 var combinationSum = function(candidates, target) {
     let result = [];
 

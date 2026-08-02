@@ -22,6 +22,7 @@ Input: nums = [9], target = 3
 Output: 0
  * Bottom-up tabulation: O(target * nums.length) time, O(target) space
  */
+// LEAF   - COUNTS instead of collecting: target===0 -> 1; loop from 0
 var combinationSum4 = function (nums, target) {
     // first we define our cache memory to store every number of combination
     let dp = {0: 1};

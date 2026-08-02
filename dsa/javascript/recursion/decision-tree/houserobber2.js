@@ -38,6 +38,7 @@ Constraints:
  * @param {number[]} nums
  * @return {number}
  */
+// EDGE   - same, run twice over two ranges, max of the two
 var rob = function(nums) {
     const dfs = (index, end) => {
         if(index >end) return 0;

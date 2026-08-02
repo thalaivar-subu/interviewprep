@@ -44,6 +44,7 @@ s and t consist of English letters.
  * @param {string} t
  * @return {number}
  */
+// LEAF   - matching all of t IS one subsequence -> 1; edges free
 var numDistinct = function (s, t) {
     const helper = (i, j) => {
         if (j === t.length) return 1;

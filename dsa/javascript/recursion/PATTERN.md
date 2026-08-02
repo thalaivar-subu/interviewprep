@@ -36,7 +36,7 @@ coding style, not an algorithm; every file in it is memoized DP. If you
 want the tabulated versions of the same recurrences, see
 [`../dp/PATTERN.md`](../dp/PATTERN.md).
 
-## The three questions that decide your recursion
+## The four questions that decide your recursion
 
 ### 1. What is the state?
 
@@ -70,6 +70,130 @@ different combinations"* ⇒ `0`.
 
 Same problem, both shapes: `nqueens.js` collects boards, `nqueens2.js`
 returns a count.
+
+### 4. How do I combine the returned values?
+
+Once you're returning a value, three things follow *mechanically* from
+one fact: **what kind of quantity you return.** Read the first word of
+the problem statement and everything else is decided.
+
+```
+"list / print all"   -> COLLECT   push([...cur]) at leaf, return void, pop after call
+"how many"           -> COUNT     combine +      leaf 1     dead 0         no +1 on edges
+"fewest / min cost"  -> MIN       combine min    leaf 0     dead Infinity  +1 on the edge
+"longest / max"      -> MAX       combine max    leaf 0     dead 0/-Inf    +k on the edge
+"can you / possible" -> BOOLEAN   combine ||     leaf true  dead false     short-circuits
+```
+
+#### Why counting adds but optimizing takes an extremum
+
+Solutions reachable through choice A and through choice B are **disjoint
+sets**, so counting must **aggregate every branch**: `|A| + |B|`.
+Optimizing gets to **pick** one branch and discard the rest. Same tree,
+different combine — that is the entire difference.
+
+#### Where `+1` goes: leaves vs edges
+
+Every root→leaf path is one solution. Take `amount = 3, coins = [1,2]`:
+
+```
+  3 --1--> 2 --1--> 1 --1--> 0      path A: coins {1,1,1}
+  3 --1--> 2 --2----------> 0       path B: coins {1,2}
+  3 --2--> 1 --1----------> 0       path C: coins {2,1}
+```
+
+- **COUNT** asks *"how many paths?"* → mark each **leaf** `1` and add.
+  Traversing an edge doesn't create a new way, so edges are worth
+  nothing → **no `+1` at the call site.**
+- **MIN/MAX** asks *"cheapest path?"* → mark each **edge** `+1` and
+  minimize. Reaching a leaf costs nothing more → **leaf is `0`.**
+
+Exactly inverted, which is why the base cases differ:
+
+| | leaf value | edge value | answer is |
+|---|---|---|---|
+| LC 518 Coin Change II (count) | `1` | — | number of leaves |
+| LC 322 Coin Change (min) | `0` | `+1` | edges on the cheapest path |
+
+**The tell:** a `+` on the recursive call means edge-focused
+(MIN/MAX); no `+` means leaf-focused (COLLECT/COUNT/BOOLEAN). That holds
+for every file in this folder.
+
+#### You don't have to memorize the base case
+
+It is just **the honest answer to the empty problem**:
+
+- *"How many ways to make amount 0?"* → one (take nothing) → `return 1`
+- *"How many coins to make amount 0?"* → zero → `return 0`
+- *"LIS of an empty suffix?"* → `0`
+- *"Ways to match an empty remaining `t`?"* → one (match nothing) → `1`
+
+The **failure** base is the **identity of the combine operator** — the
+value that vanishes under it:
+
+| Returns | Combine | Success base | Failure base |
+|---|---|---|---|
+| a count | `+` | `1` | `0` |
+| a min | `Math.min` | `0` | `Infinity` |
+| a max | `Math.max` | `0` | `0` / `-Infinity` |
+| a boolean | `\|\|` | `true` | `false` |
+
+This is why `coinschange.js`'s `-1` sentinel needs the
+`if (sub !== -1)` guard while `amount + 1` doesn't: `-1` is not the
+identity of `min`, so a dead branch fails to vanish — and `-1 + 1 = 0`
+reads as "free", the classic bug. Both conventions work; only one needs
+the guard.
+
+#### `+=` is not a counting construct
+
+It is one accumulator skeleton with a swappable operator:
+
+```js
+let acc = IDENTITY;
+for (const choice of choices) acc = COMBINE(acc, recurse(choice));
+return acc;
+```
+
+`count += x` is that skeleton when `COMBINE` is `+`;
+`minCoins = Math.min(minCoins, x + 1)` is the same skeleton with `min`.
+The two-branch forms (`ans = a + b`, `Math.max(take, skip)`) are the same
+skeleton with the loop unrolled to two iterations. Don't file them as
+different patterns.
+
+#### Every problem in this folder, classified
+
+| Bucket | Combine | Leaf | Dead | Files |
+|---|---|---|---|---|
+| COLLECT | `result.push([...cur])` | push + `return` | — | `subsets`, `subsets2`, `subseq`, `subseqnum`, `permutation`, `permutation2`, `combinationsum`, `combinationsum2`, `combinationsum3`, `generateparanthesis`, `palindromepartitioning`, `nqueens`, `numberpad` |
+| COUNT | `+` | `1` | `0` | `coinschange2`, `combinationsum4`, `nqueens2`, `distinctsequence`, `targetsum`, `dicerolls` |
+| MIN | `Math.min` | `0` | `Infinity` / `-1` | `coinschange`, `deleteoperations`, `minimumDistance`, `efficientcost-workday` |
+| MAX | `Math.max` | `0` | — | `houserobber`, `houserobber2`, `lengthoflongestincreasingsubseq`, `longestcommonsubseq`, `longestcommonpalindrome`, `partition-sum` |
+| BOOLEAN | `\|\|` | `true` | `false` | `paritition-equal-sum`, `partitiontokequalsubsets` |
+
+Every `.js` file carries this as a one-line `// LEAF` / `// EDGE` /
+`// LINEAR` tag above its declaration. `basics/` is linear recursion with
+no combine step at all.
+
+#### Two pairs that isolate the variable
+
+- **`coinschange.js` vs `coinschange2.js`** — identical tree, identical
+  loop. Only the *question* differs, and that flips `+`→`min` and
+  `return 1`→`return 0`. EDGE vs LEAF.
+- **`nqueens.js` vs `nqueens2.js`** — identical tree, identical pruning.
+  One pushes boards, the other does `count += helper(...)`. COLLECT vs
+  COUNT, both LEAF.
+
+#### Three cases that look like exceptions but confirm the rule
+
+- `longestcommonpalindrome.js` — a MAX problem whose base is
+  `left === right → 1`, because a single char genuinely *is* a
+  palindrome of length 1. And it uses `2 + dfs(...)`, not `1 +`, because
+  matching both ends consumes **two** characters. Edge value = items
+  consumed.
+- `deleteoperations.js` — bases return `word2.length - j`, not `0`:
+  "one string exhausted" honestly costs *delete all the rest*.
+- `targetsum.js` — the leaf itself decides,
+  `total === target ? 1 : 0`. Still a leaf value, just computed.
 
 ## Template (core backtracking)
 

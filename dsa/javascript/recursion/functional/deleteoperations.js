@@ -35,6 +35,7 @@ word1 and word2 consist of only lowercase English letters.
  * @return {number}
  * O(2^(m+n)) time worst case (no memoization), O(m+n) recursion space
  */
+// EDGE   - each deletion costs +1; leaf returns leftover length, not 0
 var minDistance = function (word1, word2) {
     const dfs = (i, j) => {
         if (i === word1.length) return word2.length - j;

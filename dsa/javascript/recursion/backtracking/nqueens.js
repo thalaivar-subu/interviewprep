@@ -34,6 +34,7 @@ Constraints:
  * @return {string[][]}
  * N pow ! Time Complexity - Constant Decisions
  */
+// LEAF   - push the board when row===n
 var solveNQueens = function (n) {
     let board = Array.from({ length: n }, () => Array(n).fill(false));
     let result = []

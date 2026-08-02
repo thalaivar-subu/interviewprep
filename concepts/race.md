@@ -10,26 +10,56 @@ Context: N concurrent requests read-check-then-write the same resource
 JVM-local mutual exclusion — dies the moment you run more than one instance, since each JVM has its own lock table.
 
 ## DB-level (works across instances — the default answer)
+### READ
+"Acquire a database write lock while reading."
+ SELECT *
+FROM inventory
+WHERE product_id = ?
+FOR UPDATE;
+
+Multiple readers can hold it.
+Writer waits until all readers finish.
+SELECT *
+FROM inventory
+FOR SHARE;
+
+
+### Creation
 
 **2. Unique constraint (insert-time dedup)**
 `ALTER TABLE orders ADD CONSTRAINT uq_order UNIQUE (product_id, idempotency_key);`
 The second concurrent insert for the same key fails/no-ops at the DB — turns a race into a guaranteed single winner.
-
-**3. Conditional update (no version column needed)**
-`UPDATE inventory SET qty = qty - 1 WHERE product_id = 42 AND qty > 0;`
-Check `rowsAffected` — the row-level atomicity does check-then-act in one step, no read-modify-write gap.
-
-**4. Optimistic locking via version column**
-`UPDATE inventory SET qty=qty-1, version=version+1 WHERE id=42 AND version=7;`
-`rowsAffected = 0` means someone else won — re-read and retry. Best for read-heavy/low-contention.
-
-**5. Pessimistic locking (SELECT FOR UPDATE)**
-`SELECT qty FROM inventory WHERE id=42 FOR UPDATE;` (inside a transaction)
-Blocks every other transaction on that row until commit — correct but serializes contention; see [locks.md](locks.md).
+- Solves Creation
+- not incr/decr
 
 **6. Insert-then-select-if-not-exists**
 `INSERT INTO processed_requests(id) VALUES ($1) ON CONFLICT DO NOTHING;`
 Solves "have I already handled this exact request" (idempotency), **not** "safely decrement a shared counter" — different problem than #2-5.
+
+### Update
+
+**3. Conditional update (no version column needed)**
+`UPDATE inventory SET qty = qty - 1 WHERE product_id = 42 AND qty > 0;`
+Check `rowsAffected` — the row-level atomicity does check-then-act in one step, no read-modify-write gap.
+- For simple state change like incr/decr - if profile info change like that go for versioning
+
+**4. Optimistic locking via version column**
+`UPDATE inventory SET qty=qty-1, version=version+1 WHERE id=42 AND version=7;`
+`rowsAffected = 0` means someone else won — re-read and retry. Best for read-heavy/low-contention.
+- Retry Storm
+
+**5. Pessimistic locking (SELECT FOR UPDATE)**
+`SELECT qty FROM inventory WHERE id=42 FOR UPDATE;` (inside a transaction)
+Blocks every other transaction on that row until commit — correct but serializes contention; see [locks.md](locks.md).
+- Blocking
+- Deadlocks
+- Lower throughput
+Use case -  Complex transaction.
+Read inventory
+Reserve stock
+Create order
+Create payment
+Update shipment
 
 ## Redis
 

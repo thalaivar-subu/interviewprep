@@ -83,6 +83,8 @@ Two things that are easy to get wrong and both matter:
 
 - The branches are **summed**, not maxed. Counting problems add;
   optimization problems take an extremum. Same tree, different combine.
+  (The general rule — which combine, which base case, and where `+1`
+  goes — is [`../PATTERN.md`](../PATTERN.md) → *question 4*.)
 - The base cases are **asymmetric**. `j === t.length` returns `1` and
   must be checked **first** — if both strings are exhausted at once,
   that's still a successful match. Swap the order and you return 0.

@@ -23,6 +23,7 @@ Output: 222616187
 Explanation: The answer must be returned modulo 109 + 7.
 * O(2 pow N)
  */
+// LEAF   - all dice spent and target 0 IS one way -> 1; edges free
 var numRollsToTarget = function (n, k, target) {
     const MOD = Math.pow(10, 9) + 7;
     const map = new Map();

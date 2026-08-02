@@ -69,7 +69,12 @@ Two idioms worth stealing:
   `Infinity` also works but poisons arithmetic if you forget a guard.
 - **The `-1` sentinel must be checked before adding.** `sub + 1` on
   `-1` gives `0`, which reads as "free" — the single most common bug in
-  this problem.
+  this problem. The guard exists *because* `-1` is not the identity of
+  `min`; `Infinity`/`amount + 1` makes a dead branch vanish on its own
+  and needs no guard.
+  See [`../PATTERN.md`](../PATTERN.md) → *question 4* for why, and for
+  the LC 322 (EDGE) vs LC 518 (LEAF) contrast the next template
+  continues.
 
 Note the state is **just `remaining`**, not `(index, remaining)`,
 precisely because coins are reusable and order doesn't matter for a

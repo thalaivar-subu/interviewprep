@@ -31,6 +31,7 @@ All the numbers of nums are unique.
  * @param {number[]} nums
  * @return {number[][]}
  */
+// LEAF   - same, numeric input
 var subsets = function(nums) {
     let result = [];
     let len = nums.length;

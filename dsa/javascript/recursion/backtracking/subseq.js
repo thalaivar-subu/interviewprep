@@ -1,4 +1,5 @@
 // O(2^n) time, O(n) recursion space
+// LEAF   - same as subsets, non-empty only
 const subseq = (processed, unProcessed, result = []) =>{
     if(!unProcessed) {
         return [processed]

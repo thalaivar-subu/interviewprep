@@ -20,6 +20,7 @@ Output: 1
 
  * O(n * sum) time (memoized), O(n * sum) space
  */
+// LEAF   - the leaf itself decides: total===target ? 1 : 0
 var findTargetSumWays = function (nums, target) {
     let dp = new Map();
     const backTrack = (index, total) => {

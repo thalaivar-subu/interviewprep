@@ -17,6 +17,7 @@ https://leetcode.com/problems/coin-change/description/
 o(N^amount)
 */
 // Top Down Approach
+// EDGE   - each coin used costs +1; leaf is 0 (nothing left to pay)
 var coinChange = function (coins, amount) {
     const backTrack = (remaining) => {
         if (remaining === 0) return 0;

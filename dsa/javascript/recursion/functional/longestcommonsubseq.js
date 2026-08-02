@@ -44,6 +44,7 @@ text1 and text2 consist of only lowercase English characters.
  * @return {number}
  * O(2^(m+n)) time worst case (no memoization), O(m+n) recursion space
  */
+// EDGE   - a matched char adds +1 to the path
 var longestCommonSubsequence = function (text1, text2) {
     const dfs = (i, j) => {
         if (i === text1.length || j === text2.length) return 0;

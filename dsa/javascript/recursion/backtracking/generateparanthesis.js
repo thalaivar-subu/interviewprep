@@ -28,6 +28,7 @@ Constraints:
  * @return {string[]}
  * O(4^n / sqrt(n)) time (Catalan number bound), O(n) recursion space
  */
+// LEAF   - push when length hits 2n
 var generateParenthesis = function (n) {
     const result = [];
 

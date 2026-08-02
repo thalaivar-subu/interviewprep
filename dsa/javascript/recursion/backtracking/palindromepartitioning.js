@@ -30,6 +30,7 @@ s contains only lowercase English letters.
  * @return {string[][]}
  * O(n * 2^n) time worst case, O(n) recursion space
  */
+// LEAF   - push when the whole string is consumed
 var partition = function (s) {
     const result = [];
     const backTrack = (start, currentSubstring) => {

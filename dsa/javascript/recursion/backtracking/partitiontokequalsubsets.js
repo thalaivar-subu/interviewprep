@@ -32,6 +32,7 @@ The frequency of each element is in the range [1, 4].
  * @return {boolean}
  * O(k * 2^n) time worst case, O(n) space
  */
+// LEAF   - K===1 IS success -> true; edges free
 var canPartitionKSubsets = function (nums, k) {
     let total = nums.reduce((a, b) => a + b, 0);
     if (total % k !== 0) return false;

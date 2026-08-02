@@ -10,6 +10,7 @@ The number  is created by concatenating the string   times so the initial .
 */
 // digital root remains same how much time you multiply
 // O(n*k) time (building repeated string), O(n*k) space
+// LINEAR - reduce until single digit
 function superDigit(n, k) {
         const getSuperDigit = (numString) => {
                 if(numString.length === 1) return numString;

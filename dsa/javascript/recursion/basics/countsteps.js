@@ -28,6 +28,7 @@ Time Complexity: O(logn) where n is the input number
  * @param {number} num
  * @return {number}
  */
+// LINEAR - one call, result flows straight back
 var numberOfSteps = function(num) {
     return helper(num, 0);
 };

@@ -46,6 +46,7 @@ word1 and word2 consist of lowercase English letters.
  * @return {number}
  * O(3^(m+n)) time worst case (no memoization), O(m+n) recursion space
  */
+// EDGE   - each insert/delete/replace costs +1, 3-way min
 var minDistance = function (word1, word2) {
     const dfs = (i, j) => {
         if (i === 0) return j;

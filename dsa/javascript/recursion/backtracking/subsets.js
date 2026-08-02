@@ -33,6 +33,7 @@ All the numbers of nums are unique.
  * @return {number[][]}
  * O(n * 2^n) time, O(n) recursion space (excluding output)
  */
+// LEAF   - the path IS the answer; push a copy, nothing returns
 var subsets = function(nums) {
     const result = [];
     const generateSubsets = (currentSubset, start) => {

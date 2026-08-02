@@ -36,6 +36,7 @@ Constraints:
  * @return {number}
  * o(n) time and space complexity
  */
+// EDGE   - robbing house i adds nums[i] to the path
 var rob = function (nums) {
     const map = new Map();
     const helper = (i) => {

@@ -48,6 +48,7 @@ Constraints:
  * @return {number[][]}
  * O(2^9) time (bounded, only digits 1-9), O(k) recursion space
  */
+// LEAF   - same, fixed size k
 var combinationSum3 = function (k, n) {
     const nums = [];
     for (let i = 1; i <= 9; i++) nums.push(i);

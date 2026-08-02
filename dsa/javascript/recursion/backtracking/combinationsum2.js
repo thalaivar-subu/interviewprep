@@ -46,6 +46,7 @@ Constraints:
  * @return {number[][]}
  * O(2^n) time worst case, O(n) recursion space
  */
+// LEAF   - same, loop at i+1 (no reuse) + dup-skip
 var combinationSum2 = function (candidates, target) {
     const result = [];
     candidates.sort((a, b) => a - b);

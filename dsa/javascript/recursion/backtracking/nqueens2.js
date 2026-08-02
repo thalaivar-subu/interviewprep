@@ -33,6 +33,7 @@ Constraints:
  * @return {number}
  * O(n!) time worst case, O(n^2) space (board) + O(n) recursion
  */
+// LEAF   - same tree, but count += ... instead of push
 var totalNQueens = function (n) {
     let board = Array.from({ length: n }, () => Array(n).fill(false));
     let result = [];
