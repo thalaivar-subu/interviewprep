@@ -1,0 +1,45 @@
+https://www.techinterview.org/post/3233463532/low-level-design-parking-lot/
+
+Core components: Entry/Exit Gate hardware, Spot Allocation Service, Pricing Engine (strategy pattern), Ticket Service, Payment Gateway, Occupancy tracking (sensors/signage).
+Flow: vehicle arrives at entry gate -> spot allocation finds a matching free spot -> ticket issued (entry_time, vehicle, spot) -> vehicle parks -> on exit, ticket looked up -> pricing engine computes fee from (entry_time, exit_time, vehicle_type) -> payment -> spot released -> occupancy updated.
+
+Unlike most topics in this folder, this is a **single-site OOP design problem**, not a distributed system -- there's no fan-out, no sharding, no read/write split to reason about. The interesting decisions are all in class design and concurrency, which is why the LLD notes carry most of the weight here; read those first.
+
+Spot allocation
+- Spots are typed by size: SMALL (motorcycle only), MEDIUM (motorcycle/car), LARGE (any vehicle).
+- Vehicles are typed too: MOTORCYCLE, CAR, BUS. A vehicle "fits" a spot if the spot's size is >= what the vehicle needs.
+- Allocation prefers the SMALLEST spot that fits, tried in size order, not just "any free spot" -- park a motorcycle in a small spot first, leave mediums free for cars. Getting this backwards (large-first) wastes capacity for the vehicles that actually need the large spots.
+- Generalizes to any resource-matching problem with typed resources and typed demands (bin packing, cloud instance sizing, freight container assignment) -- try the tightest fit before the loosest.
+
+Pricing (strategy pattern -- the one design-pattern callout worth knowing cold)
+- `PricingStrategy` is an interface with one method: `calculateFee(entryTime, exitTime, vehicleType)`.
+- `HourlyPricing` -- per-vehicle-type hourly rate, ceiling-rounded (partial hour rounds up to a full hour, standard for paid parking).
+- `FlatRatePricing` -- one fixed fee regardless of duration or vehicle.
+- Swapping strategies (or adding SurgePricing, WeekendPricing, MembershipPricing) needs zero changes to ParkingLot or Ticket -- that's the whole point of the pattern: **vary one algorithm independently of the class that uses it**, versus an `if/else` chain on a `pricingMode` field that every new pricing model has to edit.
+- This is the generalizable interview answer whenever a problem says "different X should be computed differently depending on a mode/type, and new modes will be added later."
+
+Concurrency at the gates
+- Multiple entry lanes can request a spot at the same instant -- two cars must never be assigned the same spot.
+- Two-tier locking: a lock **per spot** (only the specific park/unpark operation on that spot blocks), plus one **global lock on the ticket registry** (ticket creation/lookup is a shared map, so it needs its own protection).
+- Per-spot locking, not one lot-wide lock, is what keeps throughput acceptable at a busy multi-lane entrance -- a lock granularity decision that shows up everywhere (row-level vs table-level DB locks, per-key vs global cache locks).
+
+Real-world extensions the source article doesn't cover (see also the production section below)
+- **Ticketless / ANPR entry.** Real garages increasingly skip the paper ticket: a camera reads the plate on entry and exit, and the "ticket" is really just a (plate, entry_time) row keyed by plate instead of a physical token. Changes the LLD only slightly (Ticket keyed by plate + timestamp instead of a handed-out UUID) but removes the "lost ticket" edge case entirely.
+- **Reservation / pre-booking.** A reserved spot must be excluded from `find_spot()`'s free-spot pool ahead of the reservation window, which means spot state needs a third value beyond FREE/OCCUPIED (see LLD state machine) or a separate reservation table checked before allocation.
+- **Real-time availability display.** Physical garages show "XX spots free" on entrance signage and often in a companion app. That's an occupancy-change **event stream** (spot freed/occupied) feeding both a digital sign and a mobile app cache, not something the core park/unpark call path should block on.
+- **Multi-level / multi-garage.** `ParkingFloor` already groups spots; a `ParkingLot` grouping multiple physical garages under one loyalty/payment account is a one-level extension of the same hierarchy (Lot -> Garage -> Floor -> Spot).
+
+How real parking systems ACTUALLY work in production
+Confidence: LOWER than most topics here -- there's no single "Parking Lot Inc." with an engineering blog; this is a fragmented hardware+software industry (SKIDATA, TIBA, Amano McGann, Flowbird, and building-management-integrated systems), so what follows is industry-pattern knowledge, not one company's documented architecture.
+
+- **ANPR/LPR camera-based ticketless entry is now the industry default** at scale (airports, malls, city garages), not the ticket-dispenser model the textbook LLD assumes. The vehicle's plate IS the ticket key.
+- **Physical spot occupancy is sensor-driven**, not application-inferred: ultrasonic or magnetometer pucks embedded per-spot, or overhead cameras doing computer-vision occupancy detection across a whole row. The "is this spot free" state in the software is a read of sensor state, not the source of truth the way `ParkingSpot.status` is in the textbook design -- the physical sensor can disagree with the DB, and reconciliation between them is a real operational problem.
+- **Payment has mostly moved off-site**: pay-by-app (ParkWhiz, SpotHero, garage-operator apps) lets the fee be settled before the vehicle even reaches the exit gate, so the exit gate's job becomes "read plate -> check for a valid recent payment -> raise the barrier" rather than "compute fee at the barrier and wait for a card swipe" -- this removes the exit-lane queuing that a barrier computing fees in real time causes.
+- **Dynamic/demand-based pricing** (airport and city-center garages charging more at peak hours) is a real production pattern and maps directly onto swapping in a different `PricingStrategy` implementation -- the strategy-pattern answer in the LLD section is not just a textbook exercise, it's genuinely how a pricing change would ship without touching the gate/ticket code.
+
+Related patterns list (see also Reference/Notes.txt)
+- Strategy pattern for interchangeable algorithms behind one interface -- same shape any time "how X is computed" needs to vary by mode/tier without touching the caller.
+- Best-fit-first allocation for typed resources against typed demand -- generalizes past parking to bin packing and instance sizing.
+- Fine-grained locking (per-resource, not per-system) to protect throughput under concurrent access -- same principle as row-level DB locks.
+- Occupancy-change event stream decoupling a slow/optional consumer (signage, analytics) from the hot path (park/unpark) -- same "don't make the critical path wait on a fan-out" idea as Twitter's async fanout and Uber's async payment capture.
+- Source-of-truth vs derived/cached state disagreeing under real hardware (sensor vs DB) -- the same reconciliation problem Stripe's notes cover for webhooks vs polling.

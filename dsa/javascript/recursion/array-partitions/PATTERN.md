@@ -23,7 +23,7 @@ how many groups you've already made.
 
 Contrast with [`../PATTERN.md`](../PATTERN.md) (choose *which* elements
 go together, state is a `used[]` set) and with
-[`../../decision-tree/PATTERN.md`](../../decision-tree/PATTERN.md)
+[`../../decision-tree/PATTERN.md`](../decision-tree/PATTERN.md)
 (take/skip one element at a time).
 
 ## Template

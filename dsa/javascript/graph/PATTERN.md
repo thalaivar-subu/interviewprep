@@ -16,7 +16,7 @@ Pick your traversal by what the question asks:
 | "Fewest steps / minimum time to reach …" | **BFS** — the first time you reach a node is via a shortest path |
 | "…starting from *all* of these at once" | **Multi-source BFS** — seed the queue with every source |
 | "Find a path spelling / satisfying X" | **Backtracking DFS** — mark, recurse, **un-mark** |
-| Edges have weights | Dijkstra → [`../graph-shortest-path/PATTERN.md`](../graph-shortest-path/PATTERN.md) |
+| Edges have weights | **Dijkstra** with a min-heap priority queue (no folder here yet) |
 | Dependencies / ordering | Kahn's → [`../topological-sort/PATTERN.md`](../topological-sort/PATTERN.md) |
 | Incremental connectivity, "are these connected?" | DSU → [`../union-find/PATTERN.md`](../union-find/PATTERN.md) |
 

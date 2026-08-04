@@ -230,9 +230,9 @@ producer.send(key, value)
 
 | `acks` | Broker waits for | Loss risk | Use |
 |---|---|---|---|
-| `0` | nothing | **High** — fire and forget | Metrics you don't mind losing |
-| `1` | leader's own write | **Real** — leader can die before replicating | Legacy/analytics only |
-| `all` (`-1`) | all in-sync replicas | Very low | **Everything that matters** |
+| `0` At-most-once | nothing | **High** — fire and forget | Metrics you don't mind losing |
+| `1` At-least-once (with retries) | leader's own write | **Real** — leader can die before replicating | Legacy/analytics only |
+| `all` (`-1`) Exactly-once | all in-sync replicas | Very low | **Everything that matters** |
 
 > ⚠️ **`acks=all` alone is not durability.** If `min.insync.replicas=1`, "all in-sync replicas" can mean *one* replica when followers fall behind — you're back to `acks=1` silently. The real durable combo is:
 > ```properties

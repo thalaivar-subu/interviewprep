@@ -36,7 +36,8 @@ function efficientCost(arr, threshold) {
         let minCost = Infinity;
         let maxInGroup = 0;
 
-        // Try taking 1,2,...,threshold elements
+        // arr = [1,3,4,5,2,6]
+        // arr = [0,1,2,3,4,5]
         for (
             let len = 1;
             len <= threshold && start + len <= n;
@@ -57,3 +58,47 @@ function efficientCost(arr, threshold) {
 
     return backTrack(0);
 }
+/*
+backTrack(0) -> [1,3,4,5,2,6]
+├── take [1]       -> backTrack(1) -> [3,4,5,2,6]
+│   ├── take [3]      -> backTrack(2) -> [4,5,2,6]
+│   ├── take [3,4]    -> backTrack(3) -> [5,2,6]
+│   └── take [3,4,5]  -> backTrack(4) -> [2,6]
+│
+├── take [1,3]    -> backTrack(2) -> [4,5,2,6]
+│
+└── take [1,3,4]  -> backTrack(3) -> [5,2,6]
+*/
+
+function printPartitions(arr, threshold) {
+
+    const path = [];
+
+    const backTrack = (start) => {
+
+        if (start === arr.length) {
+            console.log(JSON.stringify(path));
+            return;
+        }
+
+        for (
+            let len = 1;
+            len <= threshold && start + len <= arr.length;
+            len++
+        ) {
+            // Current partition
+            const group = arr.slice(start, start + len);
+
+            path.push(group);
+
+            backTrack(start + len);
+
+            // Backtrack
+            path.pop();
+        }
+    };
+
+    backTrack(0);
+}
+
+printPartitions([1,3,4,5,2,6], 3);

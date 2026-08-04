@@ -8,11 +8,15 @@ Personal interview-prep notes. Notes for **me to revise from**, not documentatio
 - `design/Reference/Notes.txt` — cross-topic notes (patterns, API perf, DB scaling, topic/question list). Append under the matching `== Section ==` header; don't create new files here.
 - `design/Coding Problems/` — LeetCode-style implementations, not system design.
 - `concepts/` — one short `.md` per standalone concept (replication, caching, deployment, locks...). Flat, no subfolders.
-- `dsa/`, `language/`, `interviews/`, `cli/` — unrelated to the above; leave alone unless asked.
+- `dsa/javascript/` — `CHEATSHEET.md` (one-page recap of all 33 patterns) + one folder per pattern, each with a `PATTERN.md` deep dive and its `.js` problems.
+- `language/`, `interviews/`, `cli/` — unrelated to the above; leave alone unless asked.
 
-## Adding a system-design topic
+## Adding a topic
 
-Use the **`system-design-notes` skill** (`Workspace/.claude/skills/system-design-notes/SKILL.md`) — it has the full structure, house style, and SVG rules. Don't hand-roll the layout.
+- **System design** → the `system-design-notes` skill (`Workspace/.claude/skills/system-design-notes/SKILL.md`).
+- **DSA / LeetCode** → the `dsa-pattern-notes` skill (`Workspace/.claude/skills/dsa-pattern-notes/SKILL.md`).
+
+Both have the full structure and house style. Don't hand-roll the layout.
 
 ## Writing style (applies to `design/` and `concepts/`)
 

@@ -1,0 +1,84 @@
+<svg viewBox="0 0 1000 560" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgtitle svgdesc" style="background: var(--bg-page, #0b0b0c); font-family: var(--font-voice, system-ui, sans-serif);">
+  <title id="svgtitle">Parking lot system architecture</title>
+  <desc id="svgdesc">Entry and exit gate hardware call a Gate Controller, which routes to a Spot Allocation service, a Pricing Engine, and a Ticket service. Spot Allocation publishes occupancy changes to an event bus consumed by a Display Signage service, and writes spot state directly to Postgres. Ticket service writes tickets to Postgres and calls an external Payment Gateway. Redis holds a live occupancy cache read by signage and a companion app.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--text-secondary, #8a8a8e)"/>
+    </marker>
+  </defs>
+
+  <!-- solid: primary request path -->
+  <g stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.5" fill="none" marker-end="url(#arrow)">
+    <line x1="200" y1="70" x2="410" y2="100"/>
+    <line x1="750" y1="70" x2="550" y2="100"/>
+    <line x1="480" y1="150" x2="150" y2="189"/>
+    <line x1="480" y1="150" x2="370" y2="189"/>
+    <line x1="480" y1="150" x2="590" y2="189"/>
+    <line x1="135" y1="250" x2="135" y2="289"/>
+    <line x1="135" y1="330" x2="135" y2="369"/>
+    <line x1="595" y1="250" x2="595" y2="469"/>
+  </g>
+
+  <!-- dashed: direct datastore writes and the external payment call, routed clear of the bus and other boxes -->
+  <g stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.3" fill="none" stroke-dasharray="5 4" opacity="0.75" marker-end="url(#arrow)">
+    <path d="M30,220 L10,220 L10,500 L30,500"/>
+    <path d="M700,235 L965,235 L965,400 L930,400"/>
+  </g>
+
+  <!-- Row 1: gate hardware -->
+  <rect x="100" y="20" width="200" height="50" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="200" y="42" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Entry Gate</text>
+  <text x="200" y="58" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">ANPR / ticket dispenser</text>
+
+  <rect x="650" y="20" width="200" height="50" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="750" y="42" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Exit Gate</text>
+  <text x="750" y="58" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">plate read / ticket scan</text>
+
+  <!-- Row 2: gate controller -->
+  <rect x="330" y="100" width="300" height="50" rx="8" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="480" y="122" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Gate Controller</text>
+  <text x="480" y="138" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">routes entry / exit events</text>
+
+  <!-- Row 3: core services -->
+  <g>
+    <rect x="30" y="190" width="210" height="60" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="135" y="216" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Spot Allocation</text>
+    <text x="135" y="233" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">tightest-fit-first</text>
+
+    <rect x="260" y="190" width="210" height="60" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="365" y="216" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Pricing Engine</text>
+    <text x="365" y="233" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">strategy pattern</text>
+
+    <rect x="490" y="190" width="210" height="60" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="595" y="216" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Ticket Service</text>
+    <text x="595" y="233" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">UUID tickets, registry lock</text>
+  </g>
+
+  <!-- Row 4: occupancy event bus, narrow, only under Spot Allocation -->
+  <rect x="30" y="290" width="210" height="40" rx="6" fill="var(--surface-2, #1f1f22)" stroke="var(--text-accent, #6c8cff)"/>
+  <text x="135" y="308" text-anchor="middle" font-size="11" font-weight="600" fill="var(--text-accent, #6c8cff)">Occupancy Bus</text>
+  <text x="135" y="322" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">spot freed / occupied</text>
+
+  <!-- Row 5: signage + external payment -->
+  <g>
+    <rect x="30" y="370" width="210" height="60" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="135" y="396" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Display Signage</text>
+    <text x="135" y="413" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">"XX spots free"</text>
+
+    <rect x="720" y="370" width="210" height="60" rx="8" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="825" y="396" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Payment Gateway</text>
+    <text x="825" y="413" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">card / pay-by-app</text>
+  </g>
+
+  <!-- Row 6: data stores -->
+  <g>
+    <rect x="30" y="470" width="670" height="60" rx="8" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="365" y="496" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Postgres</text>
+    <text x="365" y="513" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">spots, floors, tickets</text>
+
+    <rect x="720" y="470" width="210" height="60" rx="8" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="825" y="496" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Redis</text>
+    <text x="825" y="513" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">live occupancy cache</text>
+  </g>
+</svg>

@@ -1,0 +1,61 @@
+// Volatile vs Transient
+- transient prevents a variable from being saved during object serialization
+- volatile ensures visibility of changes to a variable across multiple threads
+
+2 consumers - 1 partition - what happens ? consumer idle
+index - clustered vs unclusterd index
+✅ The B-tree contains the actual table rows (or, in some databases, the table itself is organized as the B-tree).
+The B-tree contains the indexed column + a reference to the actual row.
+
+Transaction Propogations
+
+@SpringBootApplication includes @EnableAutoConfiguration.
+How spring boot loadsa auto configuration - @EnableAutoConfiguration
+Automatically configures beans based on the libraries on the classpath and your configuration.
+
+// SPiral Matrix
+import java.util.*;
+
+class Solution {
+    public List<Integer> spiralOrder(int[][] matrix) {
+        List<Integer> ans = new ArrayList<>();
+
+        int top = 0;
+        int bottom = matrix.length - 1;
+        int left = 0;
+        int right = matrix[0].length - 1;
+
+        while (top <= bottom && left <= right) {
+
+            // Left -> Right
+            for (int j = left; j <= right; j++) {
+                ans.add(matrix[top][j]);
+            }
+            top++;
+
+            // Top -> Bottom
+            for (int i = top; i <= bottom; i++) {
+                ans.add(matrix[i][right]);
+            }
+            right--;
+
+            // Right -> Left
+            if (top <= bottom) {
+                for (int j = right; j >= left; j--) {
+                    ans.add(matrix[bottom][j]);
+                }
+                bottom--;
+            }
+
+            // Bottom -> Top
+            if (left <= right) {
+                for (int i = bottom; i >= top; i--) {
+                    ans.add(matrix[i][left]);
+                }
+                left++;
+            }
+        }
+
+        return ans;
+    }
+}

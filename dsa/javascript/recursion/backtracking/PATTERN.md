@@ -270,7 +270,7 @@ Shapes covered above:
 - [`palindromepartitioning.js`](palindromepartitioning.js) (LC 131) — string segmentation / choose-a-cut-point.
 - [`partitiontokequalsubsets.js`](partitiontokequalsubsets.js) (LC 698) — k-bucket filling; `used[]` = assigned, restart at `0`.
 - [`subseq.js`](subseq.js) — take/skip returning up the stack.
-- [`array-partitions/`](array-partitions/PATTERN.md) — contiguous segment partitioning (2 problems).
+- [`array-partitions/`](../array-partitions/PATTERN.md) — contiguous segment partitioning (2 problems).
 
 Not actually backtracking:
 

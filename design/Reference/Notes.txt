@@ -56,6 +56,7 @@ Whatsapp -> see design/Whatsapp/
 Netflix / video streaming. ABR, transcoding ladder, Open Connect CDN. -> see design/Netflix/
 Stripe / payment system. Idempotency, double-entry ledger, webhooks, reconciliation. -> see design/Stripe/
 Splitwise. Debt simplification, multi-currency, ledger. -> see design/Splitwise/
+Parking Lot (LLD). OOP class design, strategy pattern, spot allocation, concurrency. -> see design/Parking Lot/
 
 Design Uber / Lyft. Geospatial indexing, real-time matching, surge pricing. Senior tier. -> see design/Uber/
 Design Dropbox / Google Drive. Block storage, delta sync, conflict resolution. Senior tier.

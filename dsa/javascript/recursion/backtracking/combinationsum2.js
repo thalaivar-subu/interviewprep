@@ -50,7 +50,6 @@ Constraints:
 var combinationSum2 = function (candidates, target) {
     const result = [];
     candidates.sort((a, b) => a - b);
-    const used = new Array(candidates.length).fill(false);
     const helper = (start, currentCandidates, remaining) => {
         if (remaining < 0) return;
         if (remaining === 0) {
@@ -59,12 +58,10 @@ var combinationSum2 = function (candidates, target) {
         }
         for (let i = start; i < candidates.length; i++) {
             if (used[i]) continue;
-            if (i > 0 && candidates[i] === candidates[i - 1] && !used[i - 1]) continue;
+            if (i > start && candidates[i] === candidates[i - 1]) continue;
             currentCandidates.push(candidates[i]);
-            used[i] = true;
-            helper(i, currentCandidates, remaining - candidates[i]);
+            helper(i + 1, currentCandidates, remaining - candidates[i]);
             currentCandidates.pop();
-            used[i] = false;
         }
     }
     helper(0, [], target)

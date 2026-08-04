@@ -114,5 +114,5 @@ input.
 Related: [`../linked-list/mergeksortedlist.js`](../linked-list/mergeksortedlist.js)
 (LC 23) is the canonical heap application — a min-heap of the `k` current
 heads — though that file solves it by pairwise merging instead. And
-[`../graph-shortest-path/PATTERN.md`](../graph-shortest-path/PATTERN.md)
-needs a real priority queue for Dijkstra.
+Dijkstra needs a real priority queue too, though there is no shortest-path
+folder in this repo yet.

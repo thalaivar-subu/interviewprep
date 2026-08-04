@@ -2,7 +2,7 @@
 
 Source: https://leetcode.com/discuss/post/1405817/backtracking-algorithm-problems-to-pract-lujf/
 
-This folder is a **router**. The four subfolders are genuinely different
+This folder is a **router**. The five subfolders are genuinely different
 patterns that happen to share a recursive shape — read the one that
 matches your problem:
 
@@ -10,7 +10,7 @@ matches your problem:
 |---|---|---|
 | [`basics/`](basics/PATTERN.md) | Linear recursion, accumulators, loop replacement | The recursion has **one branch**; you're using it instead of a loop |
 | [`backtracking/`](backtracking/PATTERN.md) | Choose → explore → un-choose | You must **enumerate every valid configuration** |
-| [`backtracking/array-partitions/`](backtracking/array-partitions/PATTERN.md) | Contiguous segment partition | Split an array into **adjacent groups**, cost per group |
+| [`array-partitions/`](array-partitions/PATTERN.md) | Contiguous segment partition | Split an array into **adjacent groups**, cost per group |
 | [`decision-tree/`](decision-tree/PATTERN.md) | Take/skip, memoized | Each element gets a **yes/no** decision, you want one optimum |
 | [`functional/`](functional/PATTERN.md) | Memoized DP written recursively | Recursion **returns a value** that you cache |
 
@@ -272,7 +272,7 @@ own index.
 
 - [`basics/`](basics/PATTERN.md) — 3 problems (LC 1342, HackerRank Recursive Digit Sum, pattern printing)
 - [`backtracking/`](backtracking/PATTERN.md) — 14 problems (LC 22, 39, 40, 46, 47, 51, 52, 78, 90, 131, 216, 377, 698)
-- [`backtracking/array-partitions/`](backtracking/array-partitions/PATTERN.md) — 2 problems (LC 1043 and its min-variant)
+- [`array-partitions/`](array-partitions/PATTERN.md) — 2 problems (LC 1043 and its min-variant)
 - [`decision-tree/`](decision-tree/PATTERN.md) — 5 problems (LC 115, 198, 300, 416, 494)
 - [`functional/`](functional/PATTERN.md) — 8 problems (LC 17, 72, 322, 516, 518, 583, 1143, 1155)
 

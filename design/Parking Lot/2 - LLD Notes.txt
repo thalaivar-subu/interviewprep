@@ -1,0 +1,80 @@
+https://www.techinterview.org/post/3233463532/low-level-design-parking-lot/
+
+Entities
+
+Vehicle(plate, type ENUM(MOTORCYCLE,CAR,BUS), assignedSpot)
+ParkingSpot(spotId, floor, size ENUM(SMALL,MEDIUM,LARGE), status ENUM(FREE,OCCUPIED), lock)
+    -- lock is per-spot, not a field that's persisted -- it's an in-memory mutex guarding park()/unpark() on this one spot
+ParkingFloor(floorNumber, spotsBySize Map<SpotSize, List<ParkingSpot>>)
+    -- grouped by size so find_spot() can scan one bucket instead of filtering every spot on the floor
+Ticket(ticketId UUID, vehicle, spot, entryTime, exitTime, fee)
+    -- ticketId is UUID-generated at park() time, not a DB auto-increment -- no coordinator needed across multiple entry lanes issuing tickets concurrently
+ParkingLot(floors List<ParkingFloor>, pricingStrategy PricingStrategy, tickets Map<ticketId, Ticket>, registryLock)
+PricingStrategy -- interface: calculateFee(entryTime, exitTime, vehicleType)
+    HourlyPricing(ratesByVehicleType Map<VehicleType, rate>)
+    FlatRatePricing(flatFee)
+
+Fit rule (what makes a spot valid for a vehicle)
+  SIZE_RANK = { SMALL: 0, MEDIUM: 1, LARGE: 2 }
+  MIN_SPOT_FOR = { MOTORCYCLE: SMALL, CAR: MEDIUM, BUS: LARGE }
+  def fits(vehicleType, spotSize):
+      return SIZE_RANK[spotSize] >= SIZE_RANK[MIN_SPOT_FOR[vehicleType]]
+  # motorcycle fits SMALL/MEDIUM/LARGE, car fits MEDIUM/LARGE only, bus fits LARGE only
+
+Spot allocation (tightest fit first, not first-free)
+def find_spot(floor, vehicleType):
+    for size in [MIN_SPOT_FOR[vehicleType], ...largerSizesInOrder]:   # smallest viable size first
+        for spot in floor.spotsBySize[size]:
+            with spot.lock:                      # per-spot lock, not a floor-wide lock
+                if spot.status == FREE:
+                    spot.status = OCCUPIED
+                    return spot
+    return None    # try next floor, or lot is full
+
+Park / unpark flow
+def park(lot, vehicle):
+    for floor in lot.floors:
+        spot = find_spot(floor, vehicle.type)
+        if spot:
+            vehicle.assignedSpot = spot
+            ticket = Ticket(uuid(), vehicle, spot, entryTime=now())
+            with lot.registryLock:                # global lock, but ONLY for the registry write
+                lot.tickets[ticket.ticketId] = ticket
+            return ticket
+    raise LotFullError()
+
+def unpark(lot, ticketId):
+    with lot.registryLock:
+        ticket = lot.tickets[ticketId]
+    ticket.exitTime = now()
+    ticket.fee = lot.pricingStrategy.calculateFee(ticket.entryTime, ticket.exitTime, ticket.vehicle.type)
+    with ticket.spot.lock:
+        ticket.spot.status = FREE
+    return ticket.fee
+
+Hourly pricing (ceiling-rounded, the one arithmetic detail worth getting right)
+def calculateFee(entryTime, exitTime, vehicleType):
+    hours = ceil((exitTime - entryTime) / 3600)   # 61 minutes bills as 2 hours, not 1.02
+    return max(hours, 1) * ratesByVehicleType[vehicleType]   # minimum 1 hour charged
+
+ParkingSpot state machine
+FREE -> OCCUPIED   (on park(), inside spot.lock)
+OCCUPIED -> FREE   (on unpark(), inside spot.lock)
+Two states only in the textbook version. A reservation feature needs a third state, RESERVED, which
+find_spot() must skip exactly like OCCUPIED but which unpark() never transitions out of (reservations expire
+or convert to OCCUPIED on actual arrival, not on payment).
+
+Ticket lifecycle
+OPEN (entryTime set, exitTime/fee null) -> CLOSED (exitTime + fee set on unpark)
+A ticket is never reused or reopened -- a vehicle re-entering after leaving gets a brand new ticket. This is
+why Ticket is keyed by UUID rather than by plate: plate-keyed would collide if the DB briefly retains a closed
+ticket during cleanup (avoided entirely with ANPR-based designs, since there the plate itself is the natural key
+and "no open ticket for this plate" IS the entry-allowed check).
+
+Key design decisions
+Strategy pattern for PricingStrategy -- because pricing models change independently of allocation/ticketing logic, and an if/else on a pricing-mode field would need editing at every call site every time a new pricing model ships. New rate = new class, zero changes elsewhere.
+Smallest-fitting-spot-first allocation, not first-free -- because parking a motorcycle in a large spot wastes it for a bus that has no other option; tightest fit preserves capacity for the vehicles that need it most.
+Lock per spot, not a lot-wide lock -- because a single global lock would serialize every park/unpark across every lane and floor; per-spot locks let two different lanes park two different vehicles fully in parallel. Same fine-grained-locking reasoning as row-level DB locks over table-level.
+Separate global lock scoped ONLY to the ticket registry write -- because the registry is a shared map (needs protection) but the per-spot lock already protects the spot itself; combining them into one lock would re-serialize what the per-spot locks were meant to parallelize.
+UUID ticket IDs instead of auto-increment -- because multiple entry lanes issue tickets concurrently with no shared sequence to coordinate; same reasoning as Twitter's Snowflake IDs needing no central coordinator, just simpler since strict time-ordering of tickets isn't a requirement here.
+Ceiling-rounded hourly billing with a 1-hour minimum -- because "how do you bill a partial hour" is the detail interviewers actually probe on this problem; rounding UP (not down, not nearest) is standard paid-parking practice and worth stating explicitly rather than leaving implicit in `hours * rate`.
