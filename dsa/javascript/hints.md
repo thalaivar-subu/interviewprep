@@ -10,6 +10,9 @@ Exact K
             maxInGroup = Math.max(maxInGroup, arr[i]);
         }
 
+
+Atmost + frequency, window - sliding window
+
 Should not contain duplicates
     If just duplicates
     candidates.sort((a, b) => a - b);
@@ -24,4 +27,12 @@ Should not contain duplicates
 all possible, possible valid combinations,  all distinct solutions,  possible to divide, all root-to-leaf paths, all possible subsets 
 BACKTRACK
 
+
+longest subsequence - direct equal
+if 1 or 2 + dfs
+else math.max(*)
+
+minimum
+if dfs
+else 1 + math.min()
 

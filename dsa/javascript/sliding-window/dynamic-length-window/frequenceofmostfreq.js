@@ -52,11 +52,11 @@ var maxFrequency = function (nums, k) {
     let r = 0;
     let l = 0;
     let maximumPossibleFreq = -Infinity;
-
+    //  [1,4,8,13], k = 5
     let total = 0;
     while (r < nums.length) {
         total += nums[r]
-        while ((nums[r] * (r - l + 1)) - total > k) {
+        while ((nums[r] * (r - l + 1)) > total + k) {
             total -= nums[l]
             l++;
         }
