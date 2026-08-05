@@ -48,7 +48,7 @@ https://www.techinterview.org/system-design-interview-guides/
 Tier 1
 Twitter -> see design/Twitter/ | https://www.techinterview.org/post/3233463787/system-design-twitter-timeline/
 URL Shortener
-Rate Limiter
+Rate Limiter. 5 algorithms + distributed/Lua atomicity. -> see design/Rate Limiter/
 
 Tier 2
 Youtube -> https://bytebytego.com/courses/system-design-interview/design-youtube

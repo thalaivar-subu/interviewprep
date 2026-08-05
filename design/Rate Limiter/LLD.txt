@@ -1,0 +1,42 @@
+<<Abstract>> RateLimiter
+# Config: RateLimitConfig
+# Type: RateLimiterType
++ Allow Request(userId): boolean
+
+
+TokenBucket
+Sliding WIndow Logs
+Sliding Window Counter
+Fixed Window Counter
+Leaky Bucker
+
+
+public class RateLimiterService {
+    private final Map<UserTier, RateLimiter> rateLimiters = new HashMap<>();
+
+    public RateLimterService(){
+        rateLimiters.put(UserTier.Free, RateLimiterFactory.createRateLimiter(RateLimiterType.TokenBucket, new RateLimitConfig(maxRequest=10, windowInSeconds= 60)))
+    }
+
+    public boolean allowRequest(User user){
+        RateLimter rateLimiter = this.rateLimiters.get(user.getTier());
+        if(rateLimiter== null){
+            throw new IllegalArgumetnException
+        }
+        return rateLimiter.allowRequest(user.getUserId())
+    }
+}
+
+public class TokenBucketRateLimter extends RateLimiter {
+    private final Map<string, Integer> tokens = new ConcurrentHashMap<>();
+    private final Map<string, long> lastRefilTime = new HashMap<>();
+
+    public TokenBucketRateLimiter(RaTelimitConfig config){
+        super(config, RateLimiteType.TokenBucket)
+    }
+
+    @Override
+    public boolean allowRequest(string userId){
+        tokens.compute()
+    }
+}

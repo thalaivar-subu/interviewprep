@@ -1,0 +1,223 @@
+Rate Limiter -- the 5 algorithms, with pseudocode
+https://www.techinterview.org/post/3233474791/system-design-canon-twitter-url-shortener-rate-limiter/
+
+Runnable Java implementation of all 5, with a self-checking test harness: RateLimiterDemo.java
+in this folder. Run: cd "design/Rate Limiter" && java RateLimiterDemo.java (Java 11+, no build step).
+
+The whole problem in one line: given a key (user / IP / API key) and a limit (N requests per T), decide allow-or-reject
+for each request, in O(1)-ish time, correctly, across many servers.
+The 5 algorithms differ on exactly two axes: **memory per key** and **how they behave at the window boundary**.
+
+=====================================================================
+1. FIXED WINDOW COUNTER
+=====================================================================
+Bucket time into fixed slots. One counter per (key, slot). Reset by letting the key expire.
+
+  def allow(key, limit, windowSec):
+      slot = floor(now() / windowSec)          # e.g. minute number since epoch
+      redisKey = f"{key}:{slot}"
+      count = redis.incr(redisKey)             # INCR is atomic, creates at 1 if absent
+      if count == 1:
+          redis.expire(redisKey, windowSec)    # only set TTL on first request of the slot
+      return count <= limit
+
++ Simplest to implement and reason about. O(1) memory per key. One atomic INCR, no Lua needed.
+- **Boundary burst -- the flaw that gets asked about.** Limit 100/min:
+      100 requests at 00:59.9  ->  all allowed (slot 0)
+      100 requests at 01:00.1  ->  all allowed (slot 1)
+      = 200 requests in ~0.2s, 2x the intended rate.
+- Also bursty in aggregate: everyone's window resets at the same instant -> thundering herd at each boundary.
+
+=====================================================================
+2. SLIDING WINDOW LOG
+=====================================================================
+Store the timestamp of every request in a sorted set. Count what's still inside the trailing window.
+
+  def allow(key, limit, windowMs):
+      now = nowMs()
+      redis.zremrangebyscore(key, 0, now - windowMs)   # evict anything older than the window
+      count = redis.zcard(key)
+      if count < limit:
+          redis.zadd(key, now, uniqueRequestId())      # member must be unique, not the timestamp
+          redis.expire(key, windowMs / 1000)
+          return True
+      return False
+  # the 4 commands must run in one MULTI/Lua block, else two servers both read count and both allow
+
++ **Exactly correct.** No boundary burst -- the window truly slides.
+- Memory is O(limit) per key: a 10k/hour limit stores 10k timestamps per user. Expensive at scale.
+- Rejected requests still cost a zremrangebyscore + zcard. You pay even to say no.
+- Note the member must be unique (request id / now+random), NOT the timestamp -- two requests in the same
+  millisecond would collide into one ZSET member and undercount.
+
+=====================================================================
+3. SLIDING WINDOW COUNTER  (the hybrid -- best default)
+=====================================================================
+Keep only two counters (previous slot, current slot) and interpolate between them.
+
+  def allow(key, limit, windowMs):
+      now       = nowMs()
+      currSlot  = floor(now / windowMs)
+      elapsed   = (now % windowMs) / windowMs          # fraction into the current window, 0.0 .. 1.0
+      currCount = redis.get(f"{key}:{currSlot}")     or 0
+      prevCount = redis.get(f"{key}:{currSlot - 1}") or 0
+
+      estimate = prevCount * (1 - elapsed) + currCount   # weight the previous window by how much still overlaps
+      if estimate < limit:
+          redis.incr(f"{key}:{currSlot}")
+          redis.expire(f"{key}:{currSlot}", 2 * windowMs / 1000)   # keep 2 slots alive
+          return True
+      return False
+
+  # worked example: limit=100, window=1min, 15s into the current minute (elapsed=0.25)
+  #   prevCount=84, currCount=36
+  #   estimate = 84*0.75 + 36 = 63 + 36 = 99  ->  allowed (99 < 100)
+  The Redis keys are not based on the exact request time. They are based on the start time of each fixed window.
+
+For a 20-second window:
+
+10:00:00 represents 10:00:00–10:00:19
+10:00:20 represents 10:00:20–10:00:39
+10:00:40 represents 10:00:40–10:00:59
+
+Each request simply increments the counter for its current window, while the algorithm reads the previous window's counter and weights it to approximate a true sliding window. This is why it's called a Sliding Window Counter rather than a Sliding Window Log.
+
++ O(1) memory (2 counters), and the boundary burst is smoothed away.
+- **Approximate.** It assumes the previous window's traffic was evenly spread; if it was all in the last second,
+  the estimate under-counts. Cloudflare reported the error is tiny in practice (~0.003% of requests wrongly
+  allowed at their scale), which is why this is the usual production default.
+
+=====================================================================
+4. TOKEN BUCKET   (allows bursts -- most common in real APIs)
+=====================================================================
+A bucket refills at a steady rate up to a cap. Each request spends a token.
+
+  state per key: { tokens, lastRefillMs }
+
+  def allow(key, capacity, refillPerSec, cost=1):
+      now   = nowMs()
+      s     = load(key) or { tokens: capacity, lastRefillMs: now }
+
+      # LAZY refill -- compute on read, no background timer or cron anywhere
+      elapsedSec  = (now - s.lastRefillMs) / 1000
+      s.tokens    = min(capacity, s.tokens + elapsedSec * refillPerSec)
+      s.lastRefillMs = now
+
+      if s.tokens >= cost:
+          s.tokens -= cost
+          save(key, s); return True
+      save(key, s); return False
+
++ **Bursts are a feature**: a client idle for a while banks up to `capacity` tokens and can spend them at once,
+  while the long-run average is still `refillPerSec`. Matches how real clients behave.
++ `cost` lets expensive endpoints charge more than 1 token -- weighted rate limiting for free.
++ Only 2 numbers per key, and no timer thread: the lazy-refill trick is the thing worth remembering.
+- Read-modify-write over 2 fields -> **not atomic with plain Redis commands. Needs a Lua script** (see below).
+- If bursts are unacceptable (protecting a fragile downstream), this is the wrong choice.
+
+Used by: AWS API Gateway, Stripe, most public API rate limits.
+
+=====================================================================
+5. LEAKY BUCKET   (constant output rate -- traffic shaping)
+=====================================================================
+Requests enter a FIFO queue; a worker drains it at a fixed rate. Overflow is dropped.
+
+  def allow(key, capacity):
+      if queue(key).size < capacity:
+          queue(key).enqueue(request)      # accepted, but NOT processed yet
+          return True
+      return False                          # bucket full -> drop
+
+  # separate worker, runs forever
+  def leak(key, leakPerSec):
+      every (1 / leakPerSec) seconds:
+          if not queue(key).isEmpty():
+              process(queue(key).dequeue())
+
++ **Output rate is perfectly constant** regardless of input burstiness -- the only algorithm here that
+  *shapes* traffic rather than just rejecting it. Right when the downstream genuinely cannot absorb spikes.
+- Adds latency: accepted != processed, a request can sit in the queue.
+- Needs a real queue + a drain worker -> the most operationally heavy of the five.
+- No burst allowance at all, by design.
+
+Note: "leaky bucket as a *meter*" (rather than as a queue) is mathematically **equivalent to token bucket** --
+that's the GCRA formulation. If an interviewer says leaky bucket and means the meter version, it's token bucket
+with the arithmetic inverted. The queue version above is the one that's genuinely different.
+
+=====================================================================
+COMPARISON
+=====================================================================
+  Algorithm                 Memory/key   Accuracy    Allows burst   Boundary burst   Complexity
+  Fixed Window Counter      O(1)         low         no             YES (2x)         trivial
+  Sliding Window Log        O(limit)     exact       no             no               medium
+  Sliding Window Counter    O(1)         ~exact      no             no               medium
+  Token Bucket              O(1)         exact       YES (by design) no              medium (needs Lua)
+  Leaky Bucket (queue)      O(capacity)  exact       no             no               heavy (worker)
+
+Picking one:
+  default for an HTTP API                -> Sliding Window Counter (O(1), no boundary burst, accurate enough)
+  public API where clients burst legitimately -> Token Bucket
+  protecting a fragile downstream that must see a flat rate -> Leaky Bucket (queue)
+  billing / quota where exactness is contractual -> Sliding Window Log (pay the memory)
+  internal service, low stakes, want it in 5 lines -> Fixed Window Counter
+
+=====================================================================
+THE DISTRIBUTED PART (where interviews actually go)
+=====================================================================
+Race condition: with N app servers sharing a Redis counter, read-then-write is not safe.
+  server A: GET count -> 99 ... decides allow
+  server B: GET count -> 99 ... decides allow      # both wrote 100, actual is 101
+Single-command ops (INCR) are atomic and fine. Anything multi-step (token bucket, sliding log) is not.
+
+Fix -- run the whole decision as one Redis Lua script. Redis executes a script atomically (single-threaded
+per shard), so it is effectively a transaction with no round-trips in the middle:
+
+  -- token bucket, atomically
+  local tokens, last = redis.call('HMGET', KEYS[1], 'tokens', 'last')
+  local now, rate, cap, cost = tonumber(ARGV[1]), tonumber(ARGV[2]), tonumber(ARGV[3]), tonumber(ARGV[4])
+  tokens = math.min(cap, (tonumber(tokens) or cap) + ((now - (tonumber(last) or now)) / 1000) * rate)
+  local allowed = tokens >= cost
+  if allowed then tokens = tokens - cost end
+  redis.call('HMSET', KEYS[1], 'tokens', tokens, 'last', now)
+  redis.call('EXPIRE', KEYS[1], math.ceil(cap / rate) * 2)
+  return allowed and 1 or 0
+
+Central store vs local state -- the real trade-off:
+  central Redis   -> globally accurate, but every request pays a network round-trip (~0.5-1ms) and Redis
+                     becomes a hard dependency on the request path (needs its own HA story).
+  local per-node  -> zero latency, but N nodes each enforce `limit` -> effective limit is N x limit.
+                     Mitigate by dividing (limit/N, breaks on uneven load) or by gossiping counts periodically
+                     (approximate, converges late).
+  sticky routing  -> consistent-hash the rate-limit key to one node, so that key's state is always local and
+                     exact. Best of both, but rebalancing on node add/remove loses state (see the consistent
+                     hashing notes in Reference/Notes.txt).
+
+Where to enforce it:
+  edge / CDN (Cloudflare)   -> cheapest, stops traffic before it costs you anything. Coarse.
+  API gateway (Kong, Envoy, Nginx) -> the usual home. One place, applies to every service.
+  per-service               -> needed for fairness between internal callers, and for endpoint-specific costs.
+  Layered is normal: a coarse IP limit at the edge + a precise per-user limit at the gateway.
+
+What key to limit on:
+  authenticated -> userId or apiKey (the correct answer -- it survives IP changes)
+  anonymous     -> IP, but beware NAT/corporate proxies/mobile carriers put thousands of users behind one IP
+  expensive endpoints -> (userId, endpoint) with a per-endpoint cost, via token bucket's `cost` parameter
+
+Response contract (interviewers do check this):
+  HTTP 429 Too Many Requests
+  Retry-After: 30                 # seconds until it's worth retrying -- lets clients back off politely
+  RateLimit-Limit: 100
+  RateLimit-Remaining: 0
+  RateLimit-Reset: 30
+  (older APIs use the X- prefixed variants; the un-prefixed ones are the IETF draft standard)
+  Fail OPEN or CLOSED if Redis is down? Usually **fail open** -- a rate limiter outage should not take down
+  the API it protects. Say this out loud; it's a judgement call an interviewer wants to hear reasoned.
+
+Related patterns (see also Reference/Notes.txt)
+- Lazy computation on read instead of a background timer (token bucket refill) -- same trick as TTL-based
+  presence in Whatsapp: don't run a job, just compute from the timestamp when someone asks.
+- Atomic read-modify-write via a server-side script -- same class of problem as Stripe's idempotency guard
+  and the SELECT FOR UPDATE there.
+- Approximate-but-cheap over exact-but-expensive (sliding window counter) -- the same trade as surge pricing
+  recomputing every 1-2 min in Uber rather than continuously.
+- Fail-open vs fail-closed on a dependency outage -- a circuit-breaker-adjacent decision, see Patterns section.

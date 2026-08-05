@@ -36,3 +36,12 @@ minimum
 if dfs
 else 1 + math.min()
 
+
+Character	ASCII Range
+A-Z (Uppercase)	65 - 90
+a-z (Lowercase)	97 - 122
+0-9 (Digits)	48 - 57
+
+many different ways,  number of distinct subsequences, parition subsets - decision tree - take/skip
+
+ minimum number of steps, combinations to amount, longest subsequ -> functional recursion
