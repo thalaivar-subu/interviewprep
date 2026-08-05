@@ -45,3 +45,5 @@ a-z (Lowercase)	97 - 122
 many different ways,  number of distinct subsequences, parition subsets - decision tree - take/skip
 
  minimum number of steps, combinations to amount, longest subsequ -> functional recursion
+
+ recursion - 2pow n, but if memo grid means mxn

@@ -1,0 +1,144 @@
+<svg viewBox="0 0 820 545" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgtitle svgdesc" style="background: var(--bg-page, #0b0b0c); font-family: var(--font-voice, system-ui, sans-serif);">
+  <title id="svgtitle">Parking Lot class diagram</title>
+  <desc id="svgdesc">UML class diagram matching the Java in this folder. ParkingLot composes ParkingFloors which compose ParkingSpots. ParkingLot holds a ticket registry and a PricingStrategy, realized by HourlyPricingStrategy and FlatRatePricingStrategy. Vehicle carries a VehicleType, ParkingSpot carries a SpotSize, and Ticket references the vehicle and the spot.</desc>
+
+  <defs>
+    <marker id="assoc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10" fill="none" stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.4"/>
+    </marker>
+    <marker id="diamond" viewBox="0 0 12 10" refX="0" refY="5" markerWidth="13" markerHeight="11" orient="auto">
+      <path d="M0,5 L6,1 L12,5 L6,9 z" fill="var(--text-secondary, #8a8a8e)"/>
+    </marker>
+    <marker id="triangle" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="11" markerHeight="11" orient="auto-start-reverse">
+      <path d="M0,0 L12,6 L0,12 z" fill="var(--bg-page, #0b0b0c)" stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.2"/>
+    </marker>
+  </defs>
+
+  <!-- composition chain: lot owns floors, floor owns spots. Ticket registry lives on the lot. -->
+  <g stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.4" fill="none">
+    <line x1="360" y1="160" x2="360" y2="200" marker-start="url(#diamond)"/>
+    <line x1="360" y1="296" x2="360" y2="336" marker-start="url(#diamond)"/>
+    <path d="M470,140 L495,140 L495,380 L516,380" marker-start="url(#diamond)"/>
+  </g>
+
+  <!-- associations -->
+  <g stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.3" fill="none" marker-end="url(#assoc)">
+    <line x1="110" y1="148" x2="110" y2="188"/>
+    <path d="M250,376 L225,376 L225,340 L202,340"/>
+    <line x1="470" y1="80" x2="516" y2="80"/>
+    <line x1="470" y1="410" x2="516" y2="410"/>
+  </g>
+
+  <!-- realization -->
+  <g stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.3" fill="none" stroke-dasharray="6 4" marker-end="url(#triangle)">
+    <line x1="567" y1="170" x2="567" y2="128"/>
+    <line x1="705" y1="170" x2="705" y2="128"/>
+  </g>
+
+  <g font-size="9" fill="var(--text-secondary, #8a8a8e)">
+    <text x="367" y="184">1..*</text>
+    <text x="367" y="320">1..*</text>
+    <text x="500" y="262">*</text>
+  </g>
+
+  <!-- ===== Vehicle + enums ===== -->
+  <rect x="20" y="60" width="180" height="88" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="110" y="78" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">Vehicle</text>
+  <line x1="20" y1="86" x2="200" y2="86" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="28" y="101" font-size="9" fill="var(--text-secondary, #8a8a8e)">plate: String</text>
+  <text x="28" y="113" font-size="9" fill="var(--text-secondary, #8a8a8e)">type: VehicleType</text>
+  <text x="28" y="130" font-size="8" fill="var(--text-accent, #6c8cff)">fits a spot if spot.size &#8805;</text>
+  <text x="28" y="141" font-size="8" fill="var(--text-accent, #6c8cff)">minimumFor(type)</text>
+
+  <rect x="20" y="188" width="180" height="70" rx="4" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="110" y="204" text-anchor="middle" font-size="10" font-style="italic" fill="var(--text-accent, #6c8cff)">&#171;enum&#187;</text>
+  <text x="110" y="218" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">VehicleType</text>
+  <line x1="20" y1="226" x2="200" y2="226" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="28" y="241" font-size="9" fill="var(--text-secondary, #8a8a8e)">MOTORCYCLE, CAR, BUS</text>
+
+  <rect x="20" y="300" width="180" height="110" rx="4" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="110" y="316" text-anchor="middle" font-size="10" font-style="italic" fill="var(--text-accent, #6c8cff)">&#171;enum&#187;</text>
+  <text x="110" y="330" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">SpotSize</text>
+  <line x1="20" y1="338" x2="200" y2="338" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="28" y="353" font-size="9" fill="var(--text-secondary, #8a8a8e)">SMALL, MEDIUM, LARGE</text>
+  <line x1="20" y1="361" x2="200" y2="361" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="28" y="376" font-size="9" fill="var(--text-secondary, #8a8a8e)">+ minimumFor(VehicleType)</text>
+  <text x="28" y="388" font-size="9" fill="var(--text-secondary, #8a8a8e)">+ fits(VehicleType): bool</text>
+  <text x="28" y="403" font-size="8" fill="var(--text-accent, #6c8cff)">declared small to large, so ordinal() IS the rank</text>
+
+  <!-- ===== ParkingLot / Floor / Spot ===== -->
+  <rect x="250" y="40" width="220" height="120" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="360" y="58" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">ParkingLot</text>
+  <line x1="250" y1="66" x2="470" y2="66" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="258" y="81" font-size="9" fill="var(--text-secondary, #8a8a8e)">- floors: List&#60;ParkingFloor&#62;</text>
+  <text x="258" y="93" font-size="9" fill="var(--text-secondary, #8a8a8e)">- pricingStrategy</text>
+  <text x="258" y="105" font-size="9" fill="var(--text-secondary, #8a8a8e)">- tickets: Map&#60;id, Ticket&#62;</text>
+  <text x="258" y="117" font-size="9" fill="var(--text-secondary, #8a8a8e)">- registryLock: Lock</text>
+  <line x1="250" y1="125" x2="470" y2="125" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="258" y="140" font-size="9" fill="var(--text-secondary, #8a8a8e)">+ park(vehicle): Ticket</text>
+  <text x="258" y="152" font-size="9" fill="var(--text-secondary, #8a8a8e)">+ unpark(ticketId): double</text>
+
+  <rect x="250" y="200" width="220" height="96" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="360" y="218" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">ParkingFloor</text>
+  <line x1="250" y1="226" x2="470" y2="226" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="258" y="241" font-size="9" fill="var(--text-secondary, #8a8a8e)">- floorNumber: int</text>
+  <text x="258" y="253" font-size="9" fill="var(--text-secondary, #8a8a8e)">- spotsBySize: Map&#60;SpotSize, List&#62;</text>
+  <line x1="250" y1="261" x2="470" y2="261" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="258" y="276" font-size="9" fill="var(--text-secondary, #8a8a8e)">+ findSpot(vehicleType): Spot</text>
+  <text x="258" y="290" font-size="8" fill="var(--text-accent, #6c8cff)">tightest fit first, smallest viable size</text>
+
+  <rect x="250" y="336" width="220" height="140" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--text-accent, #6c8cff)" stroke-width="1.8"/>
+  <text x="360" y="354" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-accent, #6c8cff)">ParkingSpot</text>
+  <line x1="250" y1="362" x2="470" y2="362" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="258" y="377" font-size="9" fill="var(--text-secondary, #8a8a8e)">- spotId: String, floor: int</text>
+  <text x="258" y="389" font-size="9" fill="var(--text-secondary, #8a8a8e)">- size: SpotSize</text>
+  <text x="258" y="401" font-size="9" fill="var(--text-secondary, #8a8a8e)">- occupied: boolean</text>
+  <text x="258" y="413" font-size="9" fill="var(--text-secondary, #8a8a8e)">- lock: ReentrantLock</text>
+  <line x1="250" y1="421" x2="470" y2="421" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="258" y="436" font-size="9" fill="var(--text-secondary, #8a8a8e)">+ tryOccupy(): boolean</text>
+  <text x="258" y="448" font-size="9" fill="var(--text-secondary, #8a8a8e)">+ release()</text>
+  <text x="258" y="465" font-size="8" fill="var(--text-accent, #6c8cff)">lock is PER SPOT, not lot wide</text>
+
+  <!-- ===== PricingStrategy + Ticket ===== -->
+  <rect x="516" y="40" width="234" height="86" rx="4" fill="var(--surface-2, #1f1f22)" stroke="var(--text-accent, #6c8cff)" stroke-width="1.6"/>
+  <text x="633" y="58" text-anchor="middle" font-size="10" font-style="italic" fill="var(--text-accent, #6c8cff)">&#171;interface&#187;</text>
+  <text x="633" y="73" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">PricingStrategy</text>
+  <line x1="516" y1="81" x2="750" y2="81" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="524" y="96" font-size="9" fill="var(--text-secondary, #8a8a8e)">+ calculateFee(entry, exit, type)</text>
+  <text x="524" y="113" font-size="8" fill="var(--text-accent, #6c8cff)">new rate model = new class, zero edits elsewhere</text>
+
+  <rect x="510" y="170" width="115" height="58" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="567" y="188" text-anchor="middle" font-size="10" font-weight="600" fill="var(--text-primary, #f2f2f3)">HourlyPricing</text>
+  <line x1="510" y1="196" x2="625" y2="196" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="518" y="210" font-size="8" fill="var(--text-secondary, #8a8a8e)">rates by type</text>
+  <text x="518" y="221" font-size="8" fill="var(--text-accent, #6c8cff)">ceiling round, min 1h</text>
+
+  <rect x="645" y="170" width="120" height="58" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="705" y="188" text-anchor="middle" font-size="10" font-weight="600" fill="var(--text-primary, #f2f2f3)">FlatRatePricing</text>
+  <line x1="645" y1="196" x2="765" y2="196" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="653" y="210" font-size="8" fill="var(--text-secondary, #8a8a8e)">flatFee: double</text>
+
+  <rect x="516" y="336" width="204" height="140" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="618" y="354" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">Ticket</text>
+  <line x1="516" y1="362" x2="720" y2="362" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="524" y="377" font-size="9" fill="var(--text-secondary, #8a8a8e)">- ticketId: UUID</text>
+  <text x="524" y="389" font-size="9" fill="var(--text-secondary, #8a8a8e)">- vehicle: Vehicle</text>
+  <text x="524" y="401" font-size="9" fill="var(--text-secondary, #8a8a8e)">- spot: ParkingSpot</text>
+  <text x="524" y="413" font-size="9" fill="var(--text-secondary, #8a8a8e)">- entryTime: Instant</text>
+  <text x="524" y="425" font-size="9" fill="var(--text-secondary, #8a8a8e)">- exitTime: Instant?</text>
+  <text x="524" y="437" font-size="9" fill="var(--text-secondary, #8a8a8e)">- fee: Double?</text>
+  <text x="524" y="454" font-size="8" fill="var(--text-accent, #6c8cff)">UUID, so many entry lanes</text>
+  <text x="524" y="465" font-size="8" fill="var(--text-accent, #6c8cff)">need no shared sequence</text>
+
+  <!-- legend -->
+  <g font-size="9" fill="var(--text-secondary, #8a8a8e)">
+    <text x="20" y="510">Legend:</text>
+    <line x1="70" y1="507" x2="110" y2="507" stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.4" marker-start="url(#diamond)"/>
+    <text x="116" y="510">composition</text>
+    <line x1="190" y1="507" x2="230" y2="507" stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.3" marker-end="url(#assoc)"/>
+    <text x="236" y="510">association</text>
+    <line x1="310" y1="507" x2="350" y2="507" stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.3" stroke-dasharray="6 4" marker-end="url(#triangle)"/>
+    <text x="358" y="510">realizes interface</text>
+    <text x="480" y="510" fill="var(--text-accent, #6c8cff)">accent border = where the concurrency decision lives</text>
+  </g>
+</svg>

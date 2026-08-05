@@ -1,0 +1,140 @@
+<svg viewBox="0 0 1010 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgtitle svgdesc" style="background: var(--bg-page, #0b0b0c); font-family: var(--font-voice, system-ui, sans-serif);">
+  <title id="svgtitle">Twitter timeline class diagram</title>
+  <desc id="svgdesc">UML class diagram. Tweet references User and gets a time sortable Snowflake id. Follow is stored in both directions. Timeline is a per-user Redis sorted set of tweet ids, written by FanoutService for normal authors and read by TimelineService, which merges celebrity pulls and filters blocked or muted authors.</desc>
+
+  <defs>
+    <marker id="assoc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10" fill="none" stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.4"/>
+    </marker>
+  </defs>
+
+  <g stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.3" fill="none" marker-end="url(#assoc)">
+    <line x1="248" y1="90" x2="212" y2="90"/>
+    <line x1="115" y1="188" x2="115" y2="152"/>
+    <path d="M528,200 L510,200 L510,300 L494,300"/>
+    <path d="M528,70 L500,70 L500,32 L228,32 L228,240 L212,240"/>
+    <line x1="526" y1="340" x2="494" y2="340"/>
+    <path d="M528,400 L510,400 L510,462 L115,462 L115,436"/>
+  </g>
+
+  <g stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.1" fill="none" stroke-dasharray="4 4" opacity="0.75" marker-end="url(#assoc)">
+    <line x1="370" y1="273" x2="370" y2="237"/>
+    <path d="M400,48 L400,30 L880,30 L880,48"/>
+  </g>
+
+  <g font-size="8" fill="var(--text-secondary, #8a8a8e)">
+    <text x="376" y="258">holds ids only</text>
+    <text x="405" y="26">&#171;id from&#187;</text>
+  </g>
+
+  <rect x="20" y="50" width="192" height="100" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="116" y="68" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">User</text>
+  <line x1="20" y1="76" x2="212" y2="76" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="28" y="91" font-size="9" fill="var(--text-secondary, #8a8a8e)">userId: UUID</text>
+  <text x="28" y="103" font-size="9" fill="var(--text-secondary, #8a8a8e)">username, profile</text>
+  <text x="28" y="115" font-size="9" fill="var(--text-secondary, #8a8a8e)">followerCount: long</text>
+  <text x="28" y="127" font-size="9" fill="var(--text-secondary, #8a8a8e)">followingCount: long</text>
+  <text x="28" y="143" font-size="8" fill="var(--text-accent, #6c8cff)">followerCount denormalised so fanout</text>
+
+  <rect x="20" y="188" width="192" height="112" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="116" y="206" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">Follow</text>
+  <line x1="20" y1="214" x2="212" y2="214" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="28" y="229" font-size="9" fill="var(--text-secondary, #8a8a8e)">followerId: UUID</text>
+  <text x="28" y="241" font-size="9" fill="var(--text-secondary, #8a8a8e)">followeeId: UUID</text>
+  <text x="28" y="253" font-size="9" fill="var(--text-secondary, #8a8a8e)">createdAt</text>
+  <text x="28" y="270" font-size="8" fill="var(--text-accent, #6c8cff)">stored TWICE: partitioned by</text>
+  <text x="28" y="281" font-size="8" fill="var(--text-accent, #6c8cff)">followerId (read) AND by followeeId</text>
+  <text x="28" y="292" font-size="8" fill="var(--text-accent, #6c8cff)">(fanout). Different queries.</text>
+
+  <rect x="20" y="340" width="192" height="96" rx="4" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="116" y="358" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">SocialGraphEdge</text>
+  <line x1="20" y1="366" x2="212" y2="366" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="28" y="381" font-size="9" fill="var(--text-secondary, #8a8a8e)">userId, targetId</text>
+  <text x="28" y="393" font-size="9" fill="var(--text-secondary, #8a8a8e)">type: BLOCK | MUTE</text>
+  <text x="28" y="409" font-size="8" fill="var(--text-accent, #6c8cff)">applied as a READ time filter,</text>
+  <text x="28" y="420" font-size="8" fill="var(--text-accent, #6c8cff)">never at fanout time</text>
+
+  <rect x="248" y="50" width="242" height="185" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="369" y="68" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">Tweet</text>
+  <line x1="248" y1="76" x2="490" y2="76" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="256" y="91" font-size="9" fill="var(--text-secondary, #8a8a8e)">tweetId: long (snowflake)</text>
+  <text x="256" y="103" font-size="9" fill="var(--text-secondary, #8a8a8e)">userId: UUID</text>
+  <text x="256" y="115" font-size="9" fill="var(--text-secondary, #8a8a8e)">content, mediaUrls</text>
+  <text x="256" y="127" font-size="9" fill="var(--text-secondary, #8a8a8e)">createdAt</text>
+  <text x="256" y="139" font-size="9" fill="var(--text-secondary, #8a8a8e)">likeCount, retweetCount</text>
+  <text x="256" y="151" font-size="9" fill="var(--text-secondary, #8a8a8e)">deletedAt: Instant?</text>
+  <text x="256" y="168" font-size="8" fill="var(--text-accent, #6c8cff)">deletedAt is a TOMBSTONE. Deleting</text>
+  <text x="256" y="179" font-size="8" fill="var(--text-accent, #6c8cff)">does NOT purge the id from millions</text>
+  <text x="256" y="190" font-size="8" fill="var(--text-accent, #6c8cff)">of timelines. It just fails to hydrate.</text>
+  <text x="256" y="207" font-size="8" fill="var(--text-accent, #6c8cff)">Immutable once posted, so the id</text>
+  <text x="256" y="218" font-size="8" fill="var(--text-accent, #6c8cff)">doubles as the sort key. No 2nd index.</text>
+
+  <rect x="248" y="273" width="242" height="172" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--text-accent, #6c8cff)" stroke-width="1.8"/>
+  <text x="369" y="291" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-accent, #6c8cff)">Timeline</text>
+  <line x1="248" y1="299" x2="490" y2="299" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="256" y="314" font-size="9" fill="var(--text-secondary, #8a8a8e)">key: home:{userId}</text>
+  <text x="256" y="326" font-size="9" fill="var(--text-secondary, #8a8a8e)">member: tweetId</text>
+  <text x="256" y="338" font-size="9" fill="var(--text-secondary, #8a8a8e)">score: tweetId</text>
+  <text x="256" y="350" font-size="9" fill="var(--text-secondary, #8a8a8e)">capped at 800 entries</text>
+  <text x="256" y="367" font-size="8" fill="var(--text-accent, #6c8cff)">a Redis SORTED SET, not a table.</text>
+  <text x="256" y="380" font-size="8" fill="var(--text-accent, #6c8cff)">800 ids x 8 bytes x 500M users</text>
+  <text x="256" y="391" font-size="8" fill="var(--text-accent, #6c8cff)">= ~3.2TB. Storing bodies here</text>
+  <text x="256" y="402" font-size="8" fill="var(--text-accent, #6c8cff)">instead would be unaffordable.</text>
+  <text x="256" y="419" font-size="8" fill="var(--text-accent, #6c8cff)">Score = snowflake id, so time order</text>
+  <text x="256" y="430" font-size="8" fill="var(--text-accent, #6c8cff)">is free and pagination is a range scan.</text>
+
+  <rect x="528" y="50" width="230" height="185" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="643" y="68" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">FanoutService</text>
+  <line x1="528" y1="76" x2="758" y2="76" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="536" y="91" font-size="9" fill="var(--text-secondary, #8a8a8e)">- CELEBRITY_THRESHOLD = 10k</text>
+  <line x1="528" y1="99" x2="758" y2="99" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="536" y="114" font-size="9" fill="var(--text-secondary, #8a8a8e)">+ onTweetEvent(tweet)</text>
+  <text x="536" y="131" font-size="8" fill="var(--text-accent, #6c8cff)">if followerCount &#60; threshold:</text>
+  <text x="536" y="142" font-size="8" fill="var(--text-accent, #6c8cff)">&#160;&#160;push id to every follower timeline</text>
+  <text x="536" y="153" font-size="8" fill="var(--text-accent, #6c8cff)">else: skip entirely, pull at read</text>
+  <text x="536" y="170" font-size="8" fill="var(--text-accent, #6c8cff)">A 50M follower account posting 10x/day</text>
+  <text x="536" y="181" font-size="8" fill="var(--text-accent, #6c8cff)">would be 500M writes/day without this.</text>
+  <text x="536" y="198" font-size="8" fill="var(--text-accent, #6c8cff)">Runs off Kafka, never inline: the</text>
+  <text x="536" y="209" font-size="8" fill="var(--text-accent, #6c8cff)">author is ACKed before fanout starts.</text>
+  <text x="536" y="226" font-size="8" fill="var(--text-accent, #6c8cff)">Reads Follow by followeeId.</text>
+
+  <rect x="526" y="273" width="232" height="172" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="642" y="291" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">TimelineService</text>
+  <line x1="526" y1="299" x2="758" y2="299" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="534" y="314" font-size="9" fill="var(--text-secondary, #8a8a8e)">+ getTimeline(userId, limit)</text>
+  <line x1="526" y1="322" x2="758" y2="322" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="534" y="337" font-size="8" fill="var(--text-accent, #6c8cff)">1. read precomputed timeline</text>
+  <text x="534" y="348" font-size="8" fill="var(--text-accent, #6c8cff)">2. pull recent from celebrities</text>
+  <text x="534" y="359" font-size="8" fill="var(--text-accent, #6c8cff)">3. merge, take ~500 candidates</text>
+  <text x="534" y="370" font-size="8" fill="var(--text-accent, #6c8cff)">4. hydrate bodies from tweet cache</text>
+  <text x="534" y="381" font-size="8" fill="var(--text-accent, #6c8cff)">5. drop tombstoned / blocked / muted</text>
+  <text x="534" y="392" font-size="8" fill="var(--text-accent, #6c8cff)">6. rank, return top 20</text>
+  <text x="534" y="409" font-size="8" fill="var(--text-accent, #6c8cff)">Hydrating separately means one viral</text>
+  <text x="534" y="420" font-size="8" fill="var(--text-accent, #6c8cff)">tweet is cached ONCE, not copied into</text>
+  <text x="534" y="431" font-size="8" fill="var(--text-accent, #6c8cff)">millions of timelines.</text>
+
+  <rect x="796" y="50" width="194" height="185" rx="4" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="893" y="68" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">SnowflakeId</text>
+  <line x1="796" y1="76" x2="990" y2="76" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="804" y="91" font-size="9" fill="var(--text-secondary, #8a8a8e)">+ next(): long</text>
+  <line x1="796" y1="99" x2="990" y2="99" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="804" y="114" font-size="8.5" fill="var(--text-secondary, #8a8a8e)">1 bit&#160;&#160;unused (sign)</text>
+  <text x="804" y="126" font-size="8.5" fill="var(--text-secondary, #8a8a8e)">41 bits ms since epoch</text>
+  <text x="804" y="138" font-size="8.5" fill="var(--text-secondary, #8a8a8e)">10 bits worker id</text>
+  <text x="804" y="150" font-size="8.5" fill="var(--text-secondary, #8a8a8e)">12 bits sequence</text>
+  <text x="804" y="167" font-size="8" fill="var(--text-accent, #6c8cff)">~69 years range, 1024 nodes,</text>
+  <text x="804" y="178" font-size="8" fill="var(--text-accent, #6c8cff)">4096 ids per ms per node</text>
+  <text x="804" y="195" font-size="8" fill="var(--text-accent, #6c8cff)">Time sortable with NO central</text>
+  <text x="804" y="206" font-size="8" fill="var(--text-accent, #6c8cff)">coordinator. That is why it beats</text>
+  <text x="804" y="217" font-size="8" fill="var(--text-accent, #6c8cff)">both a UUID (unsortable) and a DB</text>
+  <text x="804" y="228" font-size="8" fill="var(--text-accent, #6c8cff)">sequence (a write bottleneck).</text>
+
+  <g font-size="9" fill="var(--text-secondary, #8a8a8e)">
+    <text x="20" y="492">Legend:</text>
+    <line x1="70" y1="489" x2="110" y2="489" stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.3" marker-end="url(#assoc)"/>
+    <text x="116" y="492">association</text>
+    <line x1="196" y1="489" x2="236" y2="489" stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.1" stroke-dasharray="4 4" opacity="0.75" marker-end="url(#assoc)"/>
+    <text x="244" y="492">dependency</text>
+    <text x="330" y="492" fill="var(--text-accent, #6c8cff)">accent border = Timeline is the precomputed read model; the whole design exists to keep it cheap.</text>
+  </g>
+</svg>

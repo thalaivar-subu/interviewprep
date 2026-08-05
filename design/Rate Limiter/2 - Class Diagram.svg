@@ -1,0 +1,158 @@
+<svg viewBox="0 0 1080 570" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgtitle svgdesc" style="background: var(--bg-page, #0b0b0c); font-family: var(--font-voice, system-ui, sans-serif);">
+  <title id="svgtitle">Rate Limiter class diagram</title>
+  <desc id="svgdesc">UML class diagram. RateLimiter is the Strategy interface, realized by five algorithm classes. LoggingRateLimiter is a Decorator that both realizes RateLimiter and wraps one. ChainedRateLimiter realizes RateLimiter and holds a list of them, implementing Chain of Responsibility. RateLimiterFactory creates implementations selected by the RateLimiterType enum.</desc>
+
+  <defs>
+    <marker id="assoc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10" fill="none" stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.4"/>
+    </marker>
+    <marker id="triangle" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="11" markerHeight="11" orient="auto-start-reverse">
+      <path d="M0,0 L12,6 L0,12 z" fill="var(--bg-page, #0b0b0c)" stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.2"/>
+    </marker>
+    <marker id="ohdiamond" viewBox="0 0 12 10" refX="0" refY="5" markerWidth="13" markerHeight="11" orient="auto">
+      <path d="M0,5 L6,1 L12,5 L6,9 z" fill="var(--bg-page, #0b0b0c)" stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.1"/>
+    </marker>
+  </defs>
+
+  <!-- realization tree: all five algorithms implement the one Strategy interface -->
+  <g stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.3" fill="none" stroke-dasharray="6 4">
+    <line x1="540" y1="200" x2="540" y2="132" marker-end="url(#triangle)"/>
+    <line x1="117" y1="200" x2="964" y2="200"/>
+    <line x1="117" y1="200" x2="117" y2="248"/>
+    <line x1="329" y1="200" x2="329" y2="248"/>
+    <line x1="541" y1="200" x2="541" y2="248"/>
+    <line x1="753" y1="200" x2="753" y2="248"/>
+    <line x1="964" y1="200" x2="964" y2="248"/>
+    <line x1="220" y1="76" x2="414" y2="76" marker-end="url(#triangle)"/>
+    <line x1="856" y1="76" x2="666" y2="76" marker-end="url(#triangle)"/>
+    <path d="M372,422 L223,422 L223,172 L428,172 L428,132" marker-end="url(#assoc)"/>
+  </g>
+
+  <!-- decorator / chain hold a reference to what they wrap -->
+  <g stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.3" fill="none">
+    <line x1="220" y1="116" x2="414" y2="116" marker-start="url(#ohdiamond)" marker-end="url(#assoc)"/>
+    <line x1="856" y1="116" x2="666" y2="116" marker-start="url(#ohdiamond)" marker-end="url(#assoc)"/>
+    <line x1="512" y1="474" x2="556" y2="474" marker-end="url(#assoc)"/>
+  </g>
+
+  <g font-size="8" fill="var(--text-secondary, #8a8a8e)">
+    <text x="248" y="72">realizes</text>
+    <text x="248" y="112">wraps 1</text>
+    <text x="700" y="72">realizes</text>
+    <text x="700" y="112">holds 1..*</text>
+    <text x="232" y="166">&#171;creates&#187;</text>
+  </g>
+
+  <!-- Decorator -->
+  <rect x="20" y="40" width="200" height="120" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="120" y="56" text-anchor="middle" font-size="9" font-style="italic" fill="var(--text-accent, #6c8cff)">&#171;Decorator&#187;</text>
+  <text x="120" y="71" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">LoggingRateLimiter</text>
+  <line x1="20" y1="79" x2="220" y2="79" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="28" y="94" font-size="9" fill="var(--text-secondary, #8a8a8e)">- delegate: RateLimiter</text>
+  <text x="28" y="106" font-size="9" fill="var(--text-secondary, #8a8a8e)">- name: String</text>
+  <line x1="20" y1="114" x2="220" y2="114" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="28" y="129" font-size="9" fill="var(--text-secondary, #8a8a8e)">+ allow(key): boolean</text>
+  <text x="28" y="146" font-size="8" fill="var(--text-accent, #6c8cff)">the 5 algorithms know nothing</text>
+  <text x="28" y="156" font-size="8" fill="var(--text-accent, #6c8cff)">about it. That is the pattern.</text>
+
+  <!-- Strategy interface -->
+  <rect x="414" y="40" width="252" height="92" rx="4" fill="var(--surface-2, #1f1f22)" stroke="var(--text-accent, #6c8cff)" stroke-width="1.8"/>
+  <text x="540" y="58" text-anchor="middle" font-size="10" font-style="italic" fill="var(--text-accent, #6c8cff)">&#171;interface&#187; &#183; Strategy</text>
+  <text x="540" y="74" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">RateLimiter</text>
+  <line x1="414" y1="82" x2="666" y2="82" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="422" y="97" font-size="9" fill="var(--text-secondary, #8a8a8e)">+ allow(key: String): boolean</text>
+  <text x="422" y="114" font-size="8" fill="var(--text-accent, #6c8cff)">one method. Everything below swaps</text>
+  <text x="422" y="125" font-size="8" fill="var(--text-accent, #6c8cff)">behind it without the caller changing.</text>
+
+  <!-- Chain -->
+  <rect x="856" y="40" width="204" height="120" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="958" y="56" text-anchor="middle" font-size="9" font-style="italic" fill="var(--text-accent, #6c8cff)">&#171;Chain of Responsibility&#187;</text>
+  <text x="958" y="71" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">ChainedRateLimiter</text>
+  <line x1="856" y1="79" x2="1060" y2="79" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="864" y="94" font-size="9" fill="var(--text-secondary, #8a8a8e)">- chain: List&#60;RateLimiter&#62;</text>
+  <line x1="856" y1="102" x2="1060" y2="102" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="864" y="117" font-size="9" fill="var(--text-secondary, #8a8a8e)">+ allow(key): boolean</text>
+  <text x="864" y="134" font-size="8" fill="var(--text-accent, #6c8cff)">IP limit then user limit then</text>
+  <text x="864" y="144" font-size="8" fill="var(--text-accent, #6c8cff)">endpoint limit. First deny wins.</text>
+
+  <!-- the five algorithms -->
+  <g>
+    <rect x="20" y="248" width="195" height="112" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="117" y="266" text-anchor="middle" font-size="11" font-weight="600" fill="var(--text-primary, #f2f2f3)">FixedWindowLimiter</text>
+    <line x1="20" y1="274" x2="215" y2="274" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="28" y="289" font-size="8.5" fill="var(--text-secondary, #8a8a8e)">- state: Map&#60;key, State&#62;</text>
+    <text x="28" y="301" font-size="8.5" fill="var(--text-secondary, #8a8a8e)">&#160;&#160;State(slot, count)</text>
+    <line x1="20" y1="309" x2="215" y2="309" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="28" y="324" font-size="8.5" fill="var(--text-secondary, #8a8a8e)">+ allow(key)</text>
+    <text x="28" y="340" font-size="8" fill="var(--text-accent, #6c8cff)">O(1) memory</text>
+    <text x="28" y="351" font-size="8" fill="var(--text-accent, #6c8cff)">2x burst at boundary</text>
+
+    <rect x="232" y="248" width="195" height="112" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="329" y="266" text-anchor="middle" font-size="11" font-weight="600" fill="var(--text-primary, #f2f2f3)">SlidingLogLimiter</text>
+    <line x1="232" y1="274" x2="427" y2="274" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="240" y="289" font-size="8.5" fill="var(--text-secondary, #8a8a8e)">- log: Map&#60;key,</text>
+    <text x="240" y="301" font-size="8.5" fill="var(--text-secondary, #8a8a8e)">&#160;&#160;Deque&#60;timestamp&#62;&#62;</text>
+    <line x1="232" y1="309" x2="427" y2="309" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="240" y="324" font-size="8.5" fill="var(--text-secondary, #8a8a8e)">+ allow(key)</text>
+    <text x="240" y="340" font-size="8" fill="var(--text-accent, #6c8cff)">exact, no burst</text>
+    <text x="240" y="351" font-size="8" fill="var(--text-accent, #6c8cff)">O(limit) memory per key</text>
+
+    <rect x="444" y="248" width="195" height="112" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="541" y="266" text-anchor="middle" font-size="11" font-weight="600" fill="var(--text-primary, #f2f2f3)">SlidingCounterLimiter</text>
+    <line x1="444" y1="274" x2="639" y2="274" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="452" y="289" font-size="8.5" fill="var(--text-secondary, #8a8a8e)">- state: Map&#60;key, State&#62;</text>
+    <text x="452" y="301" font-size="8.5" fill="var(--text-secondary, #8a8a8e)">&#160;&#160;State(slot, curr, prev)</text>
+    <line x1="444" y1="309" x2="639" y2="309" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="452" y="324" font-size="8.5" fill="var(--text-secondary, #8a8a8e)">+ allow(key)</text>
+    <text x="452" y="340" font-size="8" fill="var(--text-accent, #6c8cff)">prev*(1-elapsed) + curr</text>
+    <text x="452" y="351" font-size="8" fill="var(--text-accent, #6c8cff)">the usual default</text>
+
+    <rect x="656" y="248" width="195" height="112" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="753" y="266" text-anchor="middle" font-size="11" font-weight="600" fill="var(--text-primary, #f2f2f3)">TokenBucketLimiter</text>
+    <line x1="656" y1="274" x2="851" y2="274" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="664" y="289" font-size="8.5" fill="var(--text-secondary, #8a8a8e)">- buckets: Map&#60;key, Bucket&#62;</text>
+    <text x="664" y="301" font-size="8.5" fill="var(--text-secondary, #8a8a8e)">&#160;&#160;Bucket(tokens, lastMs)</text>
+    <line x1="656" y1="309" x2="851" y2="309" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="664" y="324" font-size="8.5" fill="var(--text-secondary, #8a8a8e)">+ allow(key, cost)</text>
+    <text x="664" y="340" font-size="8" fill="var(--text-accent, #6c8cff)">lazy refill, no timer</text>
+    <text x="664" y="351" font-size="8" fill="var(--text-accent, #6c8cff)">bursts by design</text>
+
+    <rect x="868" y="248" width="192" height="112" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="964" y="266" text-anchor="middle" font-size="11" font-weight="600" fill="var(--text-primary, #f2f2f3)">LeakyBucketLimiter</text>
+    <line x1="868" y1="274" x2="1060" y2="274" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="876" y="289" font-size="8.5" fill="var(--text-secondary, #8a8a8e)">- buckets: Map&#60;key, Bucket&#62;</text>
+    <text x="876" y="301" font-size="8.5" fill="var(--text-secondary, #8a8a8e)">&#160;&#160;Bucket(queued, lastMs)</text>
+    <line x1="868" y1="309" x2="1060" y2="309" stroke="var(--border-strong, #3a3a3e)"/>
+    <text x="876" y="324" font-size="8.5" fill="var(--text-secondary, #8a8a8e)">+ allow(key)</text>
+    <text x="876" y="340" font-size="8" fill="var(--text-accent, #6c8cff)">lazy drain, constant rate</text>
+    <text x="876" y="351" font-size="8" fill="var(--text-accent, #6c8cff)">shapes instead of rejecting</text>
+  </g>
+
+  <!-- Factory + enum -->
+  <rect x="232" y="422" width="280" height="104" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="372" y="438" text-anchor="middle" font-size="9" font-style="italic" fill="var(--text-accent, #6c8cff)">&#171;Factory&#187;</text>
+  <text x="372" y="453" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">RateLimiterFactory</text>
+  <line x1="232" y1="461" x2="512" y2="461" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="240" y="476" font-size="9" fill="var(--text-secondary, #8a8a8e)">+ create(type, limit, windowMs,</text>
+  <text x="240" y="488" font-size="9" fill="var(--text-secondary, #8a8a8e)">&#160;&#160;&#160;clock): RateLimiter</text>
+  <text x="240" y="505" font-size="8" fill="var(--text-accent, #6c8cff)">clock is a LongSupplier so tests can</text>
+  <text x="240" y="516" font-size="8" fill="var(--text-accent, #6c8cff)">move time without sleeping</text>
+
+  <rect x="556" y="422" width="230" height="104" rx="4" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="671" y="438" text-anchor="middle" font-size="10" font-style="italic" fill="var(--text-accent, #6c8cff)">&#171;enum&#187;</text>
+  <text x="671" y="453" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">RateLimiterType</text>
+  <line x1="556" y1="461" x2="786" y2="461" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="564" y="476" font-size="9" fill="var(--text-secondary, #8a8a8e)">FIXED_WINDOW, SLIDING_LOG</text>
+  <text x="564" y="488" font-size="9" fill="var(--text-secondary, #8a8a8e)">SLIDING_COUNTER</text>
+  <text x="564" y="500" font-size="9" fill="var(--text-secondary, #8a8a8e)">TOKEN_BUCKET, LEAKY_BUCKET</text>
+
+  <!-- legend -->
+  <g font-size="9" fill="var(--text-secondary, #8a8a8e)">
+    <text x="20" y="556">Legend:</text>
+    <line x1="70" y1="553" x2="110" y2="553" stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.3" stroke-dasharray="6 4" marker-end="url(#triangle)"/>
+    <text x="120" y="556">realizes interface</text>
+    <line x1="220" y1="553" x2="260" y2="553" stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.3" marker-start="url(#ohdiamond)" marker-end="url(#assoc)"/>
+    <text x="270" y="556">aggregation (holds, does not own)</text>
+    <text x="500" y="556" fill="var(--text-accent, #6c8cff)">Decorator and Chain both realize AND hold RateLimiter, which is what lets them compose over any algorithm.</text>
+  </g>
+</svg>

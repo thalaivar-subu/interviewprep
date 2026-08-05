@@ -1,0 +1,146 @@
+<svg viewBox="0 0 1010 490" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgtitle svgdesc" style="background: var(--bg-page, #0b0b0c); font-family: var(--font-voice, system-ui, sans-serif);">
+  <title id="svgtitle">WhatsApp chat class diagram</title>
+  <desc id="svgdesc">UML class diagram. Chat composes ChatMembers. Message belongs to a Chat and is stored in Cassandra partitioned by chat id. MessageReceipt tracks delivery and read per member. WebSocketServer, FanoutService and PresenceService all coordinate through Redis keys rather than through each other.</desc>
+
+  <defs>
+    <marker id="assoc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10" fill="none" stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.4"/>
+    </marker>
+    <marker id="diamond" viewBox="0 0 12 10" refX="0" refY="5" markerWidth="13" markerHeight="11" orient="auto">
+      <path d="M0,5 L6,1 L12,5 L6,9 z" fill="var(--text-secondary, #8a8a8e)"/>
+    </marker>
+  </defs>
+
+  <g stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.4" fill="none">
+    <line x1="116" y1="148" x2="116" y2="184" marker-start="url(#diamond)"/>
+  </g>
+
+  <g stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.3" fill="none" marker-end="url(#assoc)">
+    <line x1="248" y1="90" x2="216" y2="90"/>
+    <line x1="371" y1="278" x2="371" y2="242"/>
+    <line x1="644" y1="278" x2="644" y2="242"/>
+    <line x1="794" y1="140" x2="760" y2="140"/>
+    <path d="M894,278 L894,256 L700,256 L700,242"/>
+  </g>
+
+  <g stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.1" fill="none" stroke-dasharray="4 4" opacity="0.75" marker-end="url(#assoc)">
+    <line x1="214" y1="220" x2="246" y2="220"/>
+  </g>
+
+  <g font-size="8" fill="var(--text-secondary, #8a8a8e)">
+    <text x="123" y="172">1..*</text>
+    <text x="150" y="214">lastRead</text>
+  </g>
+
+  <rect x="20" y="50" width="192" height="96" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="116" y="68" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">Chat</text>
+  <line x1="20" y1="76" x2="212" y2="76" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="28" y="91" font-size="9" fill="var(--text-secondary, #8a8a8e)">chatId: UUID</text>
+  <text x="28" y="103" font-size="9" fill="var(--text-secondary, #8a8a8e)">type: DIRECT | GROUP</text>
+  <text x="28" y="115" font-size="9" fill="var(--text-secondary, #8a8a8e)">name, createdAt</text>
+  <text x="28" y="132" font-size="8" fill="var(--text-accent, #6c8cff)">groups up to 500 members</text>
+
+  <rect x="20" y="184" width="192" height="138" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="116" y="202" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">ChatMember</text>
+  <line x1="20" y1="210" x2="212" y2="210" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="28" y="225" font-size="9" fill="var(--text-secondary, #8a8a8e)">chatId, userId</text>
+  <text x="28" y="237" font-size="9" fill="var(--text-secondary, #8a8a8e)">role: ADMIN | MEMBER</text>
+  <text x="28" y="249" font-size="9" fill="var(--text-secondary, #8a8a8e)">joinedAt</text>
+  <text x="28" y="261" font-size="9" fill="var(--text-secondary, #8a8a8e)">lastReadMessageId</text>
+  <text x="28" y="278" font-size="8" fill="var(--text-accent, #6c8cff)">lastReadMessageId is the unread</text>
+  <text x="28" y="289" font-size="8" fill="var(--text-accent, #6c8cff)">CURSOR: unread = messages after it.</text>
+  <text x="28" y="300" font-size="8" fill="var(--text-accent, #6c8cff)">No per message scan needed to show</text>
+  <text x="28" y="311" font-size="8" fill="var(--text-accent, #6c8cff)">an unread badge.</text>
+
+  <rect x="248" y="50" width="244" height="190" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--text-accent, #6c8cff)" stroke-width="1.8"/>
+  <text x="370" y="68" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-accent, #6c8cff)">Message</text>
+  <line x1="248" y1="76" x2="492" y2="76" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="256" y="91" font-size="9" fill="var(--text-secondary, #8a8a8e)">messageId: UUID</text>
+  <text x="256" y="103" font-size="9" fill="var(--text-secondary, #8a8a8e)">chatId, senderId</text>
+  <text x="256" y="115" font-size="9" fill="var(--text-secondary, #8a8a8e)">content: TEXT</text>
+  <text x="256" y="127" font-size="9" fill="var(--text-secondary, #8a8a8e)">type: TEXT | IMAGE | FILE</text>
+  <text x="256" y="139" font-size="9" fill="var(--text-secondary, #8a8a8e)">&#160;&#160;&#160;&#160;&#160;&#160;| SYSTEM</text>
+  <text x="256" y="151" font-size="9" fill="var(--text-secondary, #8a8a8e)">createdAt, editedAt</text>
+  <text x="256" y="168" font-size="8" fill="var(--text-accent, #6c8cff)">Cassandra: PARTITION KEY chatId,</text>
+  <text x="256" y="179" font-size="8" fill="var(--text-accent, #6c8cff)">CLUSTERING (createdAt DESC, messageId)</text>
+  <text x="256" y="196" font-size="8" fill="var(--text-accent, #6c8cff)">Chosen for the READ PATTERN (latest N</text>
+  <text x="256" y="207" font-size="8" fill="var(--text-accent, #6c8cff)">+ paginate back), not the entity shape.</text>
+  <text x="256" y="224" font-size="8" fill="var(--text-accent, #6c8cff)">messageId breaks ties when two land in</text>
+  <text x="256" y="235" font-size="8" fill="var(--text-accent, #6c8cff)">the same millisecond.</text>
+
+  <rect x="248" y="278" width="244" height="132" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="370" y="296" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">MessageReceipt</text>
+  <line x1="248" y1="304" x2="492" y2="304" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="256" y="319" font-size="9" fill="var(--text-secondary, #8a8a8e)">messageId, userId</text>
+  <text x="256" y="331" font-size="9" fill="var(--text-secondary, #8a8a8e)">status: DELIVERED | READ</text>
+  <text x="256" y="343" font-size="9" fill="var(--text-secondary, #8a8a8e)">updatedAt</text>
+  <text x="256" y="360" font-size="8" fill="var(--text-accent, #6c8cff)">SENT &#8594; DELIVERED &#8594; READ, forward</text>
+  <text x="256" y="371" font-size="8" fill="var(--text-accent, #6c8cff)">only. A late DELIVERED ack arriving</text>
+  <text x="256" y="382" font-size="8" fill="var(--text-accent, #6c8cff)">after READ must not downgrade it.</text>
+  <text x="256" y="399" font-size="8" fill="var(--text-accent, #6c8cff)">Group read = COUNT(status=READ).</text>
+
+  <rect x="530" y="50" width="228" height="190" rx="4" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="644" y="68" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">Redis keys</text>
+  <line x1="530" y1="76" x2="758" y2="76" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="538" y="91" font-size="8.5" fill="var(--text-secondary, #8a8a8e)">user_server&#160;&#160;HASH</text>
+  <text x="538" y="103" font-size="8" fill="var(--text-secondary, #8a8a8e)">&#160;&#160;userId &#8594; serverId</text>
+  <text x="538" y="118" font-size="8.5" fill="var(--text-secondary, #8a8a8e)">user:{userId}&#160;&#160;CHANNEL</text>
+  <text x="538" y="130" font-size="8" fill="var(--text-secondary, #8a8a8e)">&#160;&#160;per user pub/sub inbox</text>
+  <text x="538" y="145" font-size="8.5" fill="var(--text-secondary, #8a8a8e)">presence:{userId}&#160;&#160;TTL 30s</text>
+  <text x="538" y="157" font-size="8" fill="var(--text-secondary, #8a8a8e)">&#160;&#160;absence of key == offline</text>
+  <text x="538" y="172" font-size="8.5" fill="var(--text-secondary, #8a8a8e)">presence_events&#160;&#160;CHANNEL</text>
+  <text x="538" y="189" font-size="8" fill="var(--text-accent, #6c8cff)">All ephemeral. None of this is a table.</text>
+  <text x="538" y="206" font-size="8" fill="var(--text-accent, #6c8cff)">Pub/sub is what makes WS servers</text>
+  <text x="538" y="217" font-size="8" fill="var(--text-accent, #6c8cff)">stateless toward each other: no server</text>
+  <text x="538" y="228" font-size="8" fill="var(--text-accent, #6c8cff)">needs to know where anyone is connected.</text>
+
+  <rect x="530" y="278" width="228" height="152" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="644" y="296" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">WebSocketServer</text>
+  <line x1="530" y1="304" x2="758" y2="304" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="538" y="319" font-size="9" fill="var(--text-secondary, #8a8a8e)">+ onConnect(userId)</text>
+  <text x="538" y="331" font-size="9" fill="var(--text-secondary, #8a8a8e)">+ onMessage(sender, chat, body)</text>
+  <text x="538" y="343" font-size="9" fill="var(--text-secondary, #8a8a8e)">+ onHeartbeat(userId)</text>
+  <text x="538" y="360" font-size="8" fill="var(--text-accent, #6c8cff)">STATEFUL: a connection is pinned to</text>
+  <text x="538" y="371" font-size="8" fill="var(--text-accent, #6c8cff)">exactly one server instance.</text>
+  <text x="538" y="388" font-size="8" fill="var(--text-accent, #6c8cff)">Persists to Cassandra, ACKs the sender</text>
+  <text x="538" y="399" font-size="8" fill="var(--text-accent, #6c8cff)">IMMEDIATELY, then publishes to Kafka.</text>
+  <text x="538" y="410" font-size="8" fill="var(--text-accent, #6c8cff)">Sender latency stays O(1) no matter</text>
+  <text x="538" y="421" font-size="8" fill="var(--text-accent, #6c8cff)">how large the group is.</text>
+
+  <rect x="794" y="50" width="196" height="190" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="892" y="68" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">FanoutService</text>
+  <line x1="794" y1="76" x2="990" y2="76" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="802" y="91" font-size="9" fill="var(--text-secondary, #8a8a8e)">+ onKafkaMessage(msg)</text>
+  <line x1="794" y1="99" x2="990" y2="99" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="802" y="114" font-size="8" fill="var(--text-accent, #6c8cff)">for each member of the chat:</text>
+  <text x="802" y="125" font-size="8" fill="var(--text-accent, #6c8cff)">&#160;&#160;online&#160;&#160;&#8594; publish to user:{id}</text>
+  <text x="802" y="136" font-size="8" fill="var(--text-accent, #6c8cff)">&#160;&#160;offline &#8594; enqueue APNs / FCM</text>
+  <text x="802" y="147" font-size="8" fill="var(--text-accent, #6c8cff)">&#160;&#160;upsert DELIVERED receipt</text>
+  <text x="802" y="164" font-size="8" fill="var(--text-accent, #6c8cff)">This is where the real load is:</text>
+  <text x="802" y="175" font-size="8" fill="var(--text-accent, #6c8cff)">one inbound message to a 500 member</text>
+  <text x="802" y="186" font-size="8" fill="var(--text-accent, #6c8cff)">group is 500 outbound deliveries.</text>
+  <text x="802" y="203" font-size="8" fill="var(--text-accent, #6c8cff)">Amplification, not ingest rate, is</text>
+  <text x="802" y="214" font-size="8" fill="var(--text-accent, #6c8cff)">what you scale for.</text>
+
+  <rect x="794" y="278" width="196" height="152" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="892" y="296" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">PresenceService</text>
+  <line x1="794" y1="304" x2="990" y2="304" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="802" y="319" font-size="9" fill="var(--text-secondary, #8a8a8e)">+ markOnline(userId)</text>
+  <text x="802" y="331" font-size="9" fill="var(--text-secondary, #8a8a8e)">+ heartbeat(userId)</text>
+  <text x="802" y="343" font-size="9" fill="var(--text-secondary, #8a8a8e)">+ isOnline(userId)</text>
+  <text x="802" y="360" font-size="8" fill="var(--text-accent, #6c8cff)">SETEX 30s on connect, client pings</text>
+  <text x="802" y="371" font-size="8" fill="var(--text-accent, #6c8cff)">every 20s to extend it.</text>
+  <text x="802" y="388" font-size="8" fill="var(--text-accent, #6c8cff)">NO explicit logout: clients die</text>
+  <text x="802" y="399" font-size="8" fill="var(--text-accent, #6c8cff)">silently. TTL fails SAFE (stale for</text>
+  <text x="802" y="410" font-size="8" fill="var(--text-accent, #6c8cff)">&#60;30s) where a missed logout event</text>
+  <text x="802" y="421" font-size="8" fill="var(--text-accent, #6c8cff)">would show ghosts online forever.</text>
+
+  <g font-size="9" fill="var(--text-secondary, #8a8a8e)">
+    <text x="20" y="462">Legend:</text>
+    <line x1="70" y1="459" x2="110" y2="459" stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.4" marker-start="url(#diamond)"/>
+    <text x="116" y="462">composition</text>
+    <line x1="190" y1="459" x2="230" y2="459" stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.3" marker-end="url(#assoc)"/>
+    <text x="236" y="462">association</text>
+    <text x="330" y="462" fill="var(--text-accent, #6c8cff)">accent border = Message; its Cassandra key choice is the one decision the whole storage design rests on.</text>
+  </g>
+</svg>

@@ -1,0 +1,106 @@
+BookMyShow / movie ticket booking -- LLD
+Canonical interview problem; no single source article.
+
+Entities
+
+User(userId UUID, name, email, phone)
+City(cityId, name)
+Theatre(theatreId UUID, name, cityId, address)
+Screen(screenId UUID, theatreId UUID, name)
+    -- one physical auditorium. Seats belong to a Screen, NOT to a Show.
+Seat(seatId UUID, screenId UUID, row CHAR, number INT, type ENUM(REGULAR,PREMIUM,RECLINER), basePrice)
+    -- the PHYSICAL seat. Exists once, reused by every show on that screen.
+Movie(movieId UUID, title, durationMins, language, genre, certification)
+Show(showId UUID, movieId UUID, screenId UUID, startTime, endTime, priceMultiplier)
+ShowSeat(showSeatId UUID, showId UUID, seatId UUID, status ENUM(AVAILABLE,LOCKED,BOOKED),
+         lockedByUserId NULL, lockExpiresAt NULL, price)
+    -- the bookable unit: one row per (show, seat). THIS is what gets locked, not Seat.
+    -- UNIQUE(showId, seatId) -- the database-level guarantee against double booking
+    -- INDEX(showId, status) -- seat-map render reads this
+Booking(bookingId UUID, userId UUID, showId UUID, status ENUM(PENDING,CONFIRMED,CANCELLED,EXPIRED),
+        totalAmount, idempotencyKey, createdAt)
+BookingSeat(bookingId UUID, showSeatId UUID)   -- join table, a booking covers N seats
+Payment(paymentId UUID, bookingId UUID, amount, method, status ENUM(PENDING,SUCCESS,FAILED,REFUNDED), idempotencyKey)
+
+The Seat vs ShowSeat split is the modelling decision interviewers probe:
+a Seat is furniture (exists once per screen); a ShowSeat is inventory (exists once per screen per show).
+Collapse them and you cannot sell the same physical seat for the 6pm and the 9pm show.
+
+Seat locking (the core path -- everything else is CRUD)
+def lockSeats(showId, seatIds, userId, ttlMinutes=10):
+    seatIds = sorted(seatIds)                       # DETERMINISTIC ORDER -- else two multi-seat
+                                                    # bookings deadlock grabbing rows in opposite order
+    BEGIN TRANSACTION
+        rows = SELECT * FROM ShowSeat
+                WHERE showId = ? AND seatId IN seatIds
+                  AND (status = 'AVAILABLE'
+                       OR (status = 'LOCKED' AND lockExpiresAt < now()))   # expired lock == available
+                FOR UPDATE                                                  # row locks held to COMMIT
+
+        if len(rows) != len(seatIds):
+            ROLLBACK
+            raise SeatUnavailableError(seatIds - rows.seatIds)   # tell the user WHICH seat went
+
+        UPDATE ShowSeat
+           SET status = 'LOCKED', lockedByUserId = userId, lockExpiresAt = now() + ttlMinutes
+         WHERE showSeatId IN rows.ids
+    COMMIT
+    return rows
+
+Booking + payment
+def createBooking(userId, showId, seatIds, idempotencyKey):
+    if cached := bookings.byIdempotencyKey(idempotencyKey): return cached   # double-click guard
+    locked  = lockSeats(showId, seatIds, userId)
+    booking = Booking(userId, showId, status=PENDING, totalAmount=sum(s.price for s in locked),
+                      idempotencyKey=idempotencyKey)
+    save(booking, locked)
+    return booking          # user now has ttlMinutes to pay
+
+def confirmBooking(bookingId, paymentResult):
+    BEGIN TRANSACTION
+        booking = SELECT * FROM Booking WHERE bookingId = ? FOR UPDATE
+        if booking.status != PENDING: return booking          # already confirmed/expired, idempotent
+        if any(seat.lockExpiresAt < now() for seat in booking.seats):
+            booking.status = EXPIRED                           # user paid too late -> refund path
+            raise LockExpiredError()
+        if paymentResult.success:
+            UPDATE ShowSeat SET status='BOOKED', lockedByUserId=NULL, lockExpiresAt=NULL
+             WHERE showSeatId IN booking.seatIds
+            booking.status = CONFIRMED
+        else:
+            releaseSeats(booking.seatIds)                      # back to AVAILABLE immediately
+            booking.status = CANCELLED
+    COMMIT
+    publish('booking.' + booking.status.lower(), booking)      # async: email/SMS, analytics
+
+Seat-map read (the hot, cacheable path)
+def seatMap(showId):
+    return SELECT seatId, status, price FROM ShowSeat
+            WHERE showId = ?
+    # render LOCKED-but-expired as AVAILABLE -- the lazy expiry rule, applied at read time.
+    # Cached with a short TTL (seconds). Deliberately allowed to be stale; lockSeats() re-validates.
+
+ShowSeat state machine
+AVAILABLE --lockSeats()--> LOCKED --payment success--> BOOKED
+    ^                        |                            |
+    |                        | TTL expiry, payment        | cancellation
+    |                        | failure, user abandons     | (time-bounded)
+    +------------------------+----------------------------+
+
+LOCKED -> AVAILABLE happens WITHOUT anyone calling anything -- that transition is the TTL, evaluated
+lazily on the next read. A sweeper job may tidy the rows, but it is not the source of truth.
+
+Booking state machine
+PENDING --payment success--> CONFIRMED --user cancels--> CANCELLED
+   |                                                          ^
+   +--payment failure / lock TTL elapsed--> EXPIRED ----------+  (refund if money was captured)
+
+Key design decisions
+ShowSeat separate from Seat -- because a physical seat is sold once per show, so inventory must be keyed by (show, seat); merging them makes multiple showtimes per screen impossible.
+UNIQUE(showId, seatId) on ShowSeat -- because it is the last line of defence: even if every application-level lock fails, the database physically cannot record the same seat twice for one show.
+SELECT ... FOR UPDATE over optimistic locking -- because contention is extreme and concentrated (one hot show on release day); optimistic retry storms perform worst exactly when load is highest.
+Seat ids sorted before locking -- because two concurrent multi-seat bookings that grab overlapping rows in opposite order will deadlock; a deterministic global order makes that impossible.
+Lock TTL evaluated lazily on read, not by a cron -- because correctness must not depend on a job running; the sweeper is an optimisation, not the mechanism. Same reasoning as token-bucket lazy refill in the Rate Limiter notes.
+Idempotency key on createBooking and on payment -- because a double-clicked Pay button must not produce two bookings or two charges. Same pattern as Stripe / Splitwise / Uber.
+Seat map cached and deliberately stale, re-validated inside lockSeats() -- because 99% of traffic is browsing; making the read path transactional would waste the entire consistency budget on people who never book.
+Booking status transitions guarded by SELECT FOR UPDATE on the Booking row -- because payment webhooks arrive out of order and must not drag a CONFIRMED booking backwards. Same "check current state before transitioning" rule as Stripe's webhook handler.

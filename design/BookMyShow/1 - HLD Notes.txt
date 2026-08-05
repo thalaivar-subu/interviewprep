@@ -1,0 +1,101 @@
+BookMyShow / movie ticket booking
+No single source article -- this is a canonical LLD/HLD interview problem, written from the standard
+formulation. Where something is my addition rather than the textbook version, it says so.
+
+Core services: Search Service, Inventory/Show Service, Booking Service, Payment Service, Notification Service.
+Flow: user picks city -> browses movies -> picks a show -> selects seats -> **seats LOCKED with a TTL** ->
+payment -> booking CONFIRMED, seats BOOKED -> notification. If payment fails or the user walks away,
+the lock expires and the seats silently return to AVAILABLE.
+
+The whole problem is one line: **two users must never book the same seat, and an abandoned checkout must
+not hold a seat hostage forever.** Everything below exists to satisfy those two sentences at once.
+
+Read/write asymmetry (drives the entire architecture)
+- Browsing (city -> movies -> shows -> seat map) is ~99% of traffic and is cacheable, read-only, stale-tolerant.
+- Booking is ~1% of traffic, but needs strong consistency and hits one hot row set (the seats of one show).
+- So: cache browsing aggressively at the edge, and reserve the expensive transactional machinery for the
+  booking path only. Do NOT put the seat map behind the same consistency guarantees as the booking.
+- Caveat: the seat map is the one read that goes stale in a user-visible way (you see a seat as free, then
+  it's gone at checkout). Standard answer: show the cached map for speed, re-validate at lock time, and treat
+  "seat taken between render and click" as a normal, expected error path -- not an exception.
+
+SEAT LOCKING -- the heart of the problem
+Naive "check then book" is a classic race:
+  user A: SELECT status -> AVAILABLE ... decides to book
+  user B: SELECT status -> AVAILABLE ... decides to book       # both then UPDATE, one silently overwrites
+Three ways to fix it, in increasing order of what an interviewer wants to hear:
+
+1. Pessimistic DB lock (correct, simplest to argue)
+     BEGIN;
+       SELECT * FROM show_seat
+        WHERE show_id = ? AND seat_id IN (?, ?, ?) AND status = 'AVAILABLE'
+          FOR UPDATE;                                   -- row locks held until COMMIT
+       -- if rows returned != seats requested -> someone else took one -> ROLLBACK, tell the user
+       UPDATE show_seat
+          SET status = 'LOCKED', locked_by = ?, lock_expires_at = now() + interval '10 minutes'
+        WHERE show_id = ? AND seat_id IN (?, ?, ?);
+     COMMIT;
+   Always lock the seat rows in a **deterministic order** (sort by seat_id) or two concurrent multi-seat
+   bookings can deadlock by grabbing the same rows in opposite order.
+
+2. Optimistic (version column + CAS) -- better under low contention, worse on a blockbuster where
+   everyone fights over the same 200 seats and the retry storm is the bottleneck.
+
+3. Distributed lock in Redis (SETNX with TTL) keyed `lock:show:{showId}:seat:{seatId}` -- fast, and the TTL
+   is free. But Redis is now on the correctness path: if it loses the key, you double-book. Usually used as
+   a fast pre-check in FRONT of the DB transaction, not instead of it.
+
+**The TTL is the non-negotiable part.** Whatever mechanism, the lock must expire on its own. A lock that
+only clears when the user cancels means one abandoned tab permanently removes a seat from inventory.
+Two ways to expire it:
+  - lazy: treat `status = LOCKED AND lock_expires_at < now()` as AVAILABLE at read time (no job needed)
+  - sweeper: a periodic job flips expired rows back
+  Lazy is strictly better as the source of truth -- the sweeper is only there to keep the table tidy.
+  Same "compute expiry on read instead of running a timer" trick as token-bucket refill in the rate limiter
+  notes and TTL presence in Whatsapp.
+
+Pricing (strategy pattern -- same shape as Parking Lot's PricingStrategy)
+  finalPrice = seat.basePrice * showMultiplier * seatTypeMultiplier - discount
+- Varies by: seat type (recliner > premium > regular), showtime (matinee cheaper), day (weekend surge),
+  movie age (opening weekend premium), and coupons.
+- Each of these is a `PricingStrategy` implementation, composed rather than an if/else chain -- because
+  "new pricing rule ships" must not mean editing the booking flow.
+
+Thundering herd on a blockbuster release
+Not usually in the textbook version, but it's what the real product is actually engineered around:
+- Opening-day sales for a big film mean every user in a city hits the SAME show's seat rows within seconds.
+- Row-level locks on one show serialize, so throughput collapses exactly when it matters.
+- Mitigations: a **virtual waiting room / queue** admitting users in controlled batches; per-show rate
+  limiting; pre-warming the seat map into cache; and sharding inventory by show so one hot show can't
+  starve the rest of the DB.
+
+Idempotency on booking + payment
+- A user double-clicking "Pay" must not create two bookings. Client sends an idempotency key per checkout
+  attempt; the booking service caches the result against it.
+- Same pattern as Stripe's notes -- any client-retriable write with an external side effect needs it.
+
+Cancellation / refund (not covered in the base problem)
+- Booking CONFIRMED -> CANCELLED releases the seats back to AVAILABLE and triggers a refund through the
+  payment provider. Time-bounded (usually no cancellation within N hours of showtime).
+- The refund is an async, retriable process -- don't hold the cancellation request open waiting on the gateway.
+
+How BookMyShow ACTUALLY does it in production
+Confidence: LOWER than most topics here. BookMyShow publishes some engineering content but far less
+architectural detail than Uber/Netflix/Twitter, so this is directional rather than documented.
+- They are engineered primarily around **extreme, short-lived traffic spikes** -- a major film or a big
+  concert on-sale drives orders-of-magnitude more load than a normal day. That spike shape, not steady-state
+  throughput, is the design constraint.
+- **Virtual waiting rooms / queueing for high-demand on-sales** are used in the industry generally
+  (Ticketmaster is the well-documented example) -- admit users in batches rather than letting everyone hit
+  inventory at once. This is the standard answer to the thundering-herd section above.
+- Cloud-hosted with aggressive CDN/caching for the browse path; the booking path stays transactional.
+- What I would NOT assert: their specific datastore, sharding key, or lock implementation. Don't invent it.
+
+Related patterns list (see also Reference/Notes.txt)
+- Temporary lock with TTL, expired lazily on read -- the single most transferable idea here (also: token
+  bucket refill, Whatsapp presence).
+- Pessimistic row locking with deterministic lock ordering to avoid deadlock.
+- Read path and write path with different consistency requirements -- cache one hard, protect the other.
+- Strategy pattern for pricing (same as Parking Lot).
+- Idempotency keys on retriable checkout writes (same as Stripe, Splitwise, Uber).
+- Queue/waiting room to flatten a thundering herd rather than scaling to absorb it.

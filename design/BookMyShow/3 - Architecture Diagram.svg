@@ -1,0 +1,86 @@
+<svg viewBox="0 0 960 580" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgtitle svgdesc" style="background: var(--bg-page, #0b0b0c); font-family: var(--font-voice, system-ui, sans-serif);">
+  <title id="svgtitle">BookMyShow ticket booking architecture</title>
+  <desc id="svgdesc">Clients reach an API gateway that splits into a cached read path and a transactional write path. Search and Show services serve browsing from Redis and Elasticsearch caches. The Booking service takes pessimistic row locks in Postgres and calls the Payment service, which talks to an external gateway. Booking events publish to a bus consumed by a Notification service.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--text-secondary, #8a8a8e)"/>
+    </marker>
+  </defs>
+
+  <!-- solid: primary request path -->
+  <g stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.5" fill="none" marker-end="url(#arrow)">
+    <line x1="480" y1="70" x2="480" y2="99"/>
+    <line x1="440" y1="150" x2="200" y2="189"/>
+    <line x1="520" y1="150" x2="700" y2="189"/>
+    <line x1="700" y1="250" x2="700" y2="289"/>
+    <path d="M810,220 L900,220 L900,400 L836,400"/>
+    <line x1="480" y1="330" x2="365" y2="369"/>
+  </g>
+
+  <!-- dashed: direct datastore access, routed clear of the event bus band -->
+  <g stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.3" fill="none" stroke-dasharray="5 4" opacity="0.75" marker-end="url(#arrow)">
+    <path d="M200,250 L200,265 L120,265 L120,469"/>
+    <path d="M300,220 L318,220 L318,455 L365,455 L365,469"/>
+    <path d="M700,250 L660,250 L660,265 L620,265 L620,469"/>
+  </g>
+
+  <!-- Row 1: clients -->
+  <rect x="380" y="20" width="200" height="50" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="480" y="42" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Clients</text>
+  <text x="480" y="58" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">web / mobile</text>
+
+  <!-- Row 2: gateway -->
+  <rect x="330" y="100" width="300" height="50" rx="8" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="480" y="122" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">API Gateway</text>
+  <text x="480" y="138" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">auth, rate limit, waiting room</text>
+
+  <!-- Row 3: read path (left) vs write path (right) -->
+  <text x="200" y="180" text-anchor="middle" font-size="10" font-weight="600" fill="var(--text-accent, #6c8cff)">READ PATH (99% of traffic, cached)</text>
+  <text x="700" y="180" text-anchor="middle" font-size="10" font-weight="600" fill="var(--text-accent, #6c8cff)">WRITE PATH (transactional)</text>
+
+  <rect x="30" y="190" width="160" height="60" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="110" y="216" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Search Svc</text>
+  <text x="110" y="233" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">movies by city</text>
+
+  <rect x="210" y="190" width="160" height="60" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="290" y="216" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Show Svc</text>
+  <text x="290" y="233" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">seat map, stale ok</text>
+
+  <rect x="590" y="190" width="220" height="60" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="700" y="216" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Booking Svc</text>
+  <text x="700" y="233" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">SELECT FOR UPDATE, TTL lock</text>
+
+  <!-- Row 4: event bus, narrow, on the write side only -->
+  <rect x="380" y="290" width="430" height="40" rx="6" fill="var(--surface-2, #1f1f22)" stroke="var(--text-accent, #6c8cff)"/>
+  <text x="595" y="308" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-accent, #6c8cff)">Event Bus</text>
+  <text x="595" y="322" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">booking.confirmed / cancelled</text>
+
+  <!-- Row 5: consumers + external -->
+  <rect x="260" y="370" width="210" height="60" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="365" y="396" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Notification Svc</text>
+  <text x="365" y="413" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">email / SMS ticket</text>
+
+  <rect x="590" y="370" width="120" height="60" rx="8" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="650" y="396" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Payment</text>
+  <text x="650" y="413" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">idempotent</text>
+
+  <rect x="730" y="370" width="200" height="60" rx="8" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="830" y="396" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Payment Gateway</text>
+  <text x="830" y="413" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">external, UPI / card</text>
+
+  <!-- Row 6: data stores -->
+  <rect x="30" y="470" width="180" height="60" rx="8" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="120" y="496" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Elasticsearch</text>
+  <text x="120" y="513" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">movie search</text>
+
+  <rect x="240" y="470" width="250" height="60" rx="8" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="365" y="496" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Redis</text>
+  <text x="365" y="513" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">seat map cache, short TTL</text>
+
+  <rect x="520" y="470" width="410" height="60" rx="8" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="725" y="496" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text-primary, #f2f2f3)">Postgres</text>
+  <text x="725" y="513" text-anchor="middle" font-size="10" fill="var(--text-secondary, #8a8a8e)">shows, show_seat, bookings, payments</text>
+
+  <text x="30" y="556" font-size="10" fill="var(--text-secondary, #8a8a8e)">Solid = request path.  Dashed = direct datastore access.  The read path is cached and allowed to be stale; the seat lock re-validates inside the Postgres transaction.</text>
+</svg>

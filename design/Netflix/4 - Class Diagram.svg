@@ -1,0 +1,145 @@
+<svg viewBox="0 0 1010 485" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="svgtitle svgdesc" style="background: var(--bg-page, #0b0b0c); font-family: var(--font-voice, system-ui, sans-serif);">
+  <title id="svgtitle">Netflix video streaming class diagram</title>
+  <desc id="svgdesc">UML class diagram. Title composes roughly 120 Assets, one per encoding ladder rung, produced by independent EncodingJobs. Manifest is generated per device profile. PlaybackService resolves the manifest and picks an Open Connect Appliance. AbrController runs on the client and chooses a ladder rung per segment.</desc>
+
+  <defs>
+    <marker id="assoc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10" fill="none" stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.4"/>
+    </marker>
+    <marker id="diamond" viewBox="0 0 12 10" refX="0" refY="5" markerWidth="13" markerHeight="11" orient="auto">
+      <path d="M0,5 L6,1 L12,5 L6,9 z" fill="var(--text-secondary, #8a8a8e)"/>
+    </marker>
+  </defs>
+
+  <g stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.4" fill="none">
+    <line x1="116" y1="156" x2="116" y2="192" marker-start="url(#diamond)"/>
+  </g>
+
+  <g stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.3" fill="none" marker-end="url(#assoc)">
+    <line x1="248" y1="90" x2="216" y2="90"/>
+    <path d="M248,290 L230,290 L230,120 L216,120"/>
+    <path d="M508,200 L490,200 L490,290 L474,290"/>
+    <line x1="626" y1="237" x2="626" y2="273"/>
+    <line x1="778" y1="140" x2="746" y2="140"/>
+  </g>
+
+  <g font-size="8" fill="var(--text-secondary, #8a8a8e)">
+    <text x="123" y="180">~120</text>
+  </g>
+
+  <rect x="20" y="50" width="192" height="106" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="116" y="68" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">Title</text>
+  <line x1="20" y1="76" x2="212" y2="76" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="28" y="91" font-size="9" fill="var(--text-secondary, #8a8a8e)">titleId: UUID</text>
+  <text x="28" y="103" font-size="9" fill="var(--text-secondary, #8a8a8e)">name, releaseAt</text>
+  <text x="28" y="115" font-size="9" fill="var(--text-secondary, #8a8a8e)">type: MOVIE | EPISODE</text>
+  <text x="28" y="127" font-size="9" fill="var(--text-secondary, #8a8a8e)">durationSecs, metadata</text>
+  <text x="28" y="144" font-size="8" fill="var(--text-accent, #6c8cff)">written once, read billions of times</text>
+
+  <rect x="20" y="192" width="192" height="172" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--text-accent, #6c8cff)" stroke-width="1.8"/>
+  <text x="116" y="210" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-accent, #6c8cff)">Asset</text>
+  <line x1="20" y1="218" x2="212" y2="218" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="28" y="233" font-size="9" fill="var(--text-secondary, #8a8a8e)">assetId, titleId</text>
+  <text x="28" y="245" font-size="9" fill="var(--text-secondary, #8a8a8e)">kind: VIDEO | AUDIO</text>
+  <text x="28" y="257" font-size="9" fill="var(--text-secondary, #8a8a8e)">&#160;&#160;&#160;&#160;&#160;&#160;| SUBTITLE</text>
+  <text x="28" y="269" font-size="9" fill="var(--text-secondary, #8a8a8e)">codec, resolution</text>
+  <text x="28" y="281" font-size="9" fill="var(--text-secondary, #8a8a8e)">bitrateKbps, language</text>
+  <text x="28" y="293" font-size="9" fill="var(--text-secondary, #8a8a8e)">segmentCount</text>
+  <text x="28" y="305" font-size="9" fill="var(--text-secondary, #8a8a8e)">storagePrefix: String</text>
+  <text x="28" y="322" font-size="8" fill="var(--text-accent, #6c8cff)">ONE ROW PER LADDER RUNG.</text>
+  <text x="28" y="333" font-size="8" fill="var(--text-accent, #6c8cff)">~120 per title: 10+ resolutions x</text>
+  <text x="28" y="344" font-size="8" fill="var(--text-accent, #6c8cff)">bitrates x audio x subtitles.</text>
+  <text x="28" y="357" font-size="8" fill="var(--text-accent, #6c8cff)">Immutable once published.</text>
+
+  <rect x="248" y="50" width="224" height="155" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="360" y="68" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">EncodingJob</text>
+  <line x1="248" y1="76" x2="472" y2="76" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="256" y="91" font-size="9" fill="var(--text-secondary, #8a8a8e)">jobId, titleId, rung</text>
+  <text x="256" y="103" font-size="9" fill="var(--text-secondary, #8a8a8e)">status: QUEUED | RUNNING</text>
+  <text x="256" y="115" font-size="9" fill="var(--text-secondary, #8a8a8e)">&#160;&#160;&#160;&#160;&#160;&#160;| DONE | FAILED</text>
+  <text x="256" y="127" font-size="9" fill="var(--text-secondary, #8a8a8e)">attempts, workerId</text>
+  <text x="256" y="144" font-size="8" fill="var(--text-accent, #6c8cff)">ONE JOB PER RUNG, deliberately.</text>
+  <text x="256" y="155" font-size="8" fill="var(--text-accent, #6c8cff)">A 50GB 4K master x 120 outputs is</text>
+  <text x="256" y="166" font-size="8" fill="var(--text-accent, #6c8cff)">hours of GPU time; per rung means</text>
+  <text x="256" y="177" font-size="8" fill="var(--text-accent, #6c8cff)">one flaky encode retries alone</text>
+  <text x="256" y="188" font-size="8" fill="var(--text-accent, #6c8cff)">instead of restarting the title.</text>
+  <text x="256" y="201" font-size="8" fill="var(--text-accent, #6c8cff)">Title is playable only when ALL are DONE.</text>
+
+  <rect x="248" y="245" width="224" height="120" rx="4" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="360" y="263" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">Manifest</text>
+  <line x1="248" y1="271" x2="472" y2="271" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="256" y="286" font-size="9" fill="var(--text-secondary, #8a8a8e)">titleId, deviceProfile</text>
+  <text x="256" y="298" font-size="9" fill="var(--text-secondary, #8a8a8e)">format: HLS | DASH</text>
+  <text x="256" y="310" font-size="9" fill="var(--text-secondary, #8a8a8e)">url: String</text>
+  <text x="256" y="327" font-size="8" fill="var(--text-accent, #6c8cff)">.m3u8 or .mpd listing segment URLs</text>
+  <text x="256" y="338" font-size="8" fill="var(--text-accent, #6c8cff)">per quality level. Per device profile,</text>
+  <text x="256" y="349" font-size="8" fill="var(--text-accent, #6c8cff)">since eligible rungs differ (4K on TV,</text>
+  <text x="256" y="360" font-size="8" fill="var(--text-accent, #6c8cff)">720p cap on mobile).</text>
+
+  <rect x="508" y="50" width="234" height="187" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="625" y="68" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">PlaybackService</text>
+  <line x1="508" y1="76" x2="742" y2="76" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="516" y="91" font-size="9" fill="var(--text-secondary, #8a8a8e)">+ start(userId, titleId,</text>
+  <text x="516" y="103" font-size="9" fill="var(--text-secondary, #8a8a8e)">&#160;&#160;&#160;deviceType, drmType)</text>
+  <text x="516" y="115" font-size="9" fill="var(--text-secondary, #8a8a8e)">+ selectOca(ipAsn, titleId)</text>
+  <text x="516" y="132" font-size="8" fill="var(--text-accent, #6c8cff)">checks entitlement, resolves the</text>
+  <text x="516" y="143" font-size="8" fill="var(--text-accent, #6c8cff)">device profile, issues a DRM licence,</text>
+  <text x="516" y="154" font-size="8" fill="var(--text-accent, #6c8cff)">points the player at the nearest OCA.</text>
+  <text x="516" y="171" font-size="8" fill="var(--text-accent, #6c8cff)">THEN IT IS OUT OF THE LOOP. Every</text>
+  <text x="516" y="182" font-size="8" fill="var(--text-accent, #6c8cff)">segment after that is a plain HTTP GET</text>
+  <text x="516" y="193" font-size="8" fill="var(--text-accent, #6c8cff)">to the OCA. Control plane and data</text>
+  <text x="516" y="204" font-size="8" fill="var(--text-accent, #6c8cff)">plane are fully separated.</text>
+  <text x="516" y="221" font-size="8" fill="var(--text-accent, #6c8cff)">Policy lives here, not on the client:</text>
+  <text x="516" y="232" font-size="8" fill="var(--text-accent, #6c8cff)">the user controls the device.</text>
+
+  <rect x="508" y="275" width="234" height="150" rx="4" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="625" y="293" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">OpenConnectAppliance</text>
+  <line x1="508" y1="301" x2="742" y2="301" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="516" y="316" font-size="9" fill="var(--text-secondary, #8a8a8e)">ocaId, ispAsn, region</text>
+  <text x="516" y="328" font-size="9" fill="var(--text-secondary, #8a8a8e)">capacityTb: int</text>
+  <text x="516" y="340" font-size="9" fill="var(--text-secondary, #8a8a8e)">cachedTitleIds: Set</text>
+  <text x="516" y="357" font-size="8" fill="var(--text-accent, #6c8cff)">a physical box INSIDE the ISP network,</text>
+  <text x="516" y="368" font-size="8" fill="var(--text-accent, #6c8cff)">100+ TB preloaded before release.</text>
+  <text x="516" y="385" font-size="8" fill="var(--text-accent, #6c8cff)">Video bytes never cross the internet</text>
+  <text x="516" y="396" font-size="8" fill="var(--text-accent, #6c8cff)">backbone. Lower latency, no transit bill,</text>
+  <text x="516" y="407" font-size="8" fill="var(--text-accent, #6c8cff)">and the ISP benefits too, which is why</text>
+  <text x="516" y="418" font-size="8" fill="var(--text-accent, #6c8cff)">they agree to host it.</text>
+
+  <rect x="778" y="50" width="212" height="195" rx="4" fill="var(--surface-1, #17171a)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="884" y="66" text-anchor="middle" font-size="9" font-style="italic" fill="var(--text-accent, #6c8cff)">&#171;runs on the client&#187;</text>
+  <text x="884" y="81" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">AbrController</text>
+  <line x1="778" y1="89" x2="990" y2="89" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="786" y="104" font-size="9" fill="var(--text-secondary, #8a8a8e)">- bufferSecs: double</text>
+  <text x="786" y="116" font-size="9" fill="var(--text-secondary, #8a8a8e)">- throughputEst: double</text>
+  <line x1="778" y1="124" x2="990" y2="124" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="786" y="139" font-size="9" fill="var(--text-secondary, #8a8a8e)">+ nextQuality(ladder): Rung</text>
+  <text x="786" y="156" font-size="8" fill="var(--text-accent, #6c8cff)">if buffer &#60; PANIC: take the lowest</text>
+  <text x="786" y="167" font-size="8" fill="var(--text-accent, #6c8cff)">if buffer &#62; TARGET (~30s): step up</text>
+  <text x="786" y="178" font-size="8" fill="var(--text-accent, #6c8cff)">else: predict from throughput</text>
+  <text x="786" y="195" font-size="8" fill="var(--text-accent, #6c8cff)">Deliberately ASYMMETRIC: minimise</text>
+  <text x="786" y="206" font-size="8" fill="var(--text-accent, #6c8cff)">rebuffering FIRST, quality second.</text>
+  <text x="786" y="217" font-size="8" fill="var(--text-accent, #6c8cff)">A stall destroys perceived quality;</text>
+  <text x="786" y="228" font-size="8" fill="var(--text-accent, #6c8cff)">a softer picture barely dents it.</text>
+  <text x="786" y="241" font-size="8" fill="var(--text-accent, #6c8cff)">Only the device can see real bandwidth.</text>
+
+  <rect x="778" y="285" width="212" height="140" rx="4" fill="var(--surface-2, #1f1f22)" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="884" y="303" text-anchor="middle" font-size="12" font-weight="600" fill="var(--text-primary, #f2f2f3)">ViewingEvent</text>
+  <line x1="778" y1="311" x2="990" y2="311" stroke="var(--border-strong, #3a3a3e)"/>
+  <text x="786" y="326" font-size="9" fill="var(--text-secondary, #8a8a8e)">userId, titleId</text>
+  <text x="786" y="338" font-size="9" fill="var(--text-secondary, #8a8a8e)">positionSecs, qualityRung</text>
+  <text x="786" y="350" font-size="9" fill="var(--text-secondary, #8a8a8e)">rebufferCount, eventAt</text>
+  <text x="786" y="367" font-size="8" fill="var(--text-accent, #6c8cff)">a Kafka STREAM, not a table.</text>
+  <text x="786" y="384" font-size="8" fill="var(--text-accent, #6c8cff)">Fans out to recommendations, billing</text>
+  <text x="786" y="395" font-size="8" fill="var(--text-accent, #6c8cff)">and analytics asynchronously, so</text>
+  <text x="786" y="406" font-size="8" fill="var(--text-accent, #6c8cff)">playback never depends on any of</text>
+  <text x="786" y="417" font-size="8" fill="var(--text-accent, #6c8cff)">those pipelines being up.</text>
+
+  <g font-size="9" fill="var(--text-secondary, #8a8a8e)">
+    <text x="20" y="462">Legend:</text>
+    <line x1="70" y1="459" x2="110" y2="459" stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.4" marker-start="url(#diamond)"/>
+    <text x="116" y="462">composition</text>
+    <line x1="190" y1="459" x2="230" y2="459" stroke="var(--text-secondary, #8a8a8e)" stroke-width="1.3" marker-end="url(#assoc)"/>
+    <text x="236" y="462">association</text>
+    <text x="330" y="462" fill="var(--text-accent, #6c8cff)">accent border = Asset; ~120 per title is what makes this a pre computation problem, not a write throughput one.</text>
+  </g>
+</svg>
